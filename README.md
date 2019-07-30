@@ -1,8 +1,7 @@
 # Mailbox Property Tag Interface RusPiRo crate
 
-This crate provides a abstraction on the mailbox property tag interface available in the Raspberry Pi. The implementation provides a function for a finite list property tags.
-
-The current implemented property tags:
+This crate implements an abstraction of the mailbox property tag interface available in the Raspberry Pi.
+There are currently a limmited number of functions for the following property tag messages implemented:
 - GetArmMemory
 - GetClockRate
 - SetClockRate

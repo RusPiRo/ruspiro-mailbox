@@ -12,8 +12,6 @@
 //! 
 //! This crate provides an abstraction on the mailbox property tag interface available in the Raspberry Pi.
 //! There are currently a limmited number of functions for the following property tag messages implemented:
-//! 
-//! The current implemented property tags:
 //! - GetArmMemory
 //! - GetClockRate
 //! - SetClockRate
