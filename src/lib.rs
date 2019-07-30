@@ -4,13 +4,14 @@
  * Author: André Borrmann 
  * License: Apache License 2.0
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.0.2")]
 #![no_std]
 #![feature(asm)]
 
 //! # Mailbox property tag interface
 //! 
-//! This crate provides a abstraction on the mailbox property tag interface available in the Raspberry Pi. The implementation provides a function for a finite list property tags.
+//! This crate provides an abstraction on the mailbox property tag interface available in the Raspberry Pi.
+//! There are currently a limmited number of functions for the following property tag messages implemented:
 //! 
 //! The current implemented property tags:
 //! - GetArmMemory
@@ -18,14 +19,11 @@
 //! - SetClockRate
 //! 
 //! Check the [official documentation](https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface) of those property tags and their purpose.
-//! ## Usage
-//! To use the crate just add the following dependency to your ``Cargo.toml`` file:
-//! ```
-//! [dependencies]
-//! ruspiro-mailbox = { git = "https://github.com/RusPiRo/ruspiro-mailbox", tag = "v0.0.1" }
-//! ```
 //! 
-//! Once done the access to the mailbox interface access is available in your rust files like so:
+//! # Usage
+//! 
+//! The crate provides a singleton wrapper to call the different Raspberry Pi mailbox property tag messages. The
+//! following example demonstrates the usage with the GetClockRate message.
 //! ```
 //! use ruspiro_mailbox::*;
 //! 
@@ -33,7 +31,7 @@
 //!     // use the mailbox to retrieve the core clock rate
 //!     if let Ok(core_rate) = MAILBOX.take_for(|mb| mb.get_clockrate(ArmClockId::Core)) {
 //!         // here we know the core clock rate do something with it...
-//!         // remeber - println is just a show case and might not be available in bare metal environment
+//!         // remeber - println is just a show case here as it might not be available in bare metal environment
 //!         println!("Core clock rate {}", core_rate);
 //!     }
 //! }
@@ -54,7 +52,7 @@ const MAILBOX_BASE: u32 = PERIPHERAL_BASE + 0x0000_B880;
 /// static "singleton" accessor to the MAILBOX peripheral
 pub static MAILBOX: Singleton<Mailbox> = Singleton::new(Mailbox::new());
 
-/// Definition of the different ARM clock id's used int the mailbox interface
+/// Definition of the different ARM clock id's used in the mailbox interface
 #[repr(u32)]
 pub enum ArmClockId {
     Emmc   = 0x1,

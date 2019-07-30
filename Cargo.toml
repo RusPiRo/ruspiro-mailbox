@@ -1,22 +1,22 @@
 [package]
 name = "ruspiro-mailbox"
 authors = ["André Borrmann <pspwizard@gmx.de>"]
-version = "0.0.1" # remember to update html_root_url
+version = "0.0.2" # remember to update html_root_url
 description = ""
 license = "Apache-2.0"
-repository = "https://github.com/RusPiRo/ruspiro-mailbox/tree/v0.0.1"
+repository = "https://github.com/RusPiRo/ruspiro-mailbox/tree/v0.0.2"
+documentation = "https://docs.rs/ruspiro-mailbox/0.0.2"
 readme = "README.md"
-keywords = ["ruspiro", "mailbox", "property-tag", "raspberry-pi", "baremetal"]
-categories = ["no_std"]
+keywords = ["RusPiRo", "mailbox", "property-tag", "raspberrypi", "baremetal"]
+categories = ["no-std", "embedded"]
 edition = "2018"
 
-# keep either bin or lib
 [lib]
 
 [dependencies]
 paste = "0.1.5"
-ruspiro-register = { git = "https://github.com/RusPiRo/ruspiro-register", tag = "v0.0.1" }
-ruspiro-singleton = { git = "https://github.com/RusPiRo/ruspiro-singleton", tag = "v0.0.1" }
+ruspiro-register = "0.0.2"
+ruspiro-singleton = "0.0.2"
 
 [features]
 
