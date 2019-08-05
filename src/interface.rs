@@ -2,7 +2,7 @@
  * Copyright (c) 2019 by the authors
  * 
  * Author: André Borrmann 
- * License: Appache License 2.0
+ * License: Apache License 2.0
  **********************************************************************************************************************/
 
 //! # Low-level mailbox property tag interface
@@ -12,6 +12,13 @@
 //! 
 
 use ruspiro_register::define_registers;
+
+// MMIO base address for peripherals
+#[cfg(feature="ruspiro_pi3")]
+const PERIPHERAL_BASE: u32 = 0x3F00_0000;
+
+// Mailbox MMIO base address
+const MAILBOX_BASE: u32 = PERIPHERAL_BASE + 0x0000_B880;
 
 /// Definition of the different message stats/types used in the mailbox interface
 #[repr(u32)]
@@ -71,13 +78,11 @@ pub fn send_message<T: MailboxMessage>(channel: MailboxChannel, message: &T) -> 
     })
 }
 
-use super::MAILBOX_BASE as MAILBOX_BASE;
-
 define_registers! [
-    MAILBOX0_READ: ReadOnly<u32> @ MAILBOX_BASE + 0x00 => [],
-    MAILBOX0_STATUS: ReadOnly<u32> @ MAILBOX_BASE + 0x18 => [],
-    MAILBOX1_WRITE: WriteOnly<u32> @ MAILBOX_BASE + 0x20 => [],
-    MAILBOX1_STATUS: ReadOnly<u32> @ MAILBOX_BASE + 0x38 => []
+    MAILBOX0_READ: ReadOnly<u32> @ MAILBOX_BASE + 0x00,
+    MAILBOX0_STATUS: ReadOnly<u32> @ MAILBOX_BASE + 0x18,
+    MAILBOX1_WRITE: WriteOnly<u32> @ MAILBOX_BASE + 0x20,
+    MAILBOX1_STATUS: ReadOnly<u32> @ MAILBOX_BASE + 0x38
 ];
 
 const MAILBOX_FULL:u32  = 0x8000_0000; // status register value if the mailbox is already full
