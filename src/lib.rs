@@ -4,7 +4,7 @@
  * Author: André Borrmann 
  * License: Apache License 2.0
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.0.2")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.1.0")]
 #![no_std]
 #![feature(asm)]
 
@@ -12,8 +12,6 @@
 //! 
 //! This crate provides an abstraction on the mailbox property tag interface available in the Raspberry Pi.
 //! There are currently a limmited number of functions for the following property tag messages implemented:
-//! 
-//! The current implemented property tags:
 //! - GetArmMemory
 //! - GetClockRate
 //! - SetClockRate
@@ -42,12 +40,6 @@ use ruspiro_singleton::Singleton;
 mod interface;
 mod propertytags;
 use interface::*;
-
-// MMIO base address for peripherals
-const PERIPHERAL_BASE: u32 = 0x3F00_0000;
-
-// Mailbox MMIO base address
-const MAILBOX_BASE: u32 = PERIPHERAL_BASE + 0x0000_B880;
 
 /// static "singleton" accessor to the MAILBOX peripheral
 pub static MAILBOX: Singleton<Mailbox> = Singleton::new(Mailbox::new());

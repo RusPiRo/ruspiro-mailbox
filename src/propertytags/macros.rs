@@ -2,7 +2,7 @@
  * Copyright (c) 2019 by the authors
  * 
  * Author: André Borrmann 
- * License: Appache License 2.0
+ * License: Apache License 2.0
  **********************************************************************************************************************/
 
 //! # Macro definitions to provide syntactic sugar when declaring a new property tag message structure
