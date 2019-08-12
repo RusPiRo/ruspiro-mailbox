@@ -23,6 +23,7 @@ mod macros;
 /// as the mailbox request message tag id will be automatically set
 #[repr(u32)]
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum PropertyTag {
     FirmwareRevisionGet = 0x0_0001,
     BoardModelGet       = 0x1_0001,

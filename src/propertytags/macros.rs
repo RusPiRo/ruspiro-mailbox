@@ -20,7 +20,7 @@
 macro_rules! property_tag_msg_request {
     ($name:ident, [$($field:ident:$type:ty), *]) => {
         #[repr(C)]
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Debug)]
         pub struct $name {
             $(
                 $field: $type,
@@ -41,7 +41,7 @@ macro_rules! property_tag_msg_request {
 macro_rules! property_tag_msg_response {
     ($name:ident, [$($field:ident:$type:ty), *]) => {
         #[repr(C)]
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Debug)]
         pub struct $name {
             $(
                 pub $field: $type,
@@ -53,9 +53,9 @@ macro_rules! property_tag_msg_response {
 /// This macros defines the message part of the property tag and will contain the request and response
 /// 
 macro_rules! property_tag_msg_data {
-    ($name:ident, $req_fields:tt, $rsp_fields:tt) => {
-        #[repr(C)]
+    ($name:ident, $req_fields:tt, $rsp_fields:tt) => {        
         paste::item! {
+            #[repr(C)]
             pub union $name {
                 request: [<$name Request>],
                 pub response: [<$name Response>]
@@ -75,6 +75,16 @@ macro_rules! property_tag_msg_impl {
             impl MailboxMessage for $name {
                 fn get_state(&self) -> u32 {
                     self.msg_type
+                }
+
+                fn get_size(&self) -> u32 {
+                    self.msg_size
+                }
+            }
+
+            impl core::fmt::Debug for $name {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {                    
+                    unsafe {write!(f, "MailboxMessage {:?} - {:?}", self.msg_tagid, self.msg_tagdata.response)}
                 }
             }
 
@@ -103,7 +113,7 @@ macro_rules! property_tag_msg_impl {
 
                 pub fn get_response(&self) -> [<$name Data Response>] {
                     unsafe { self.msg_tagdata.response }
-                }
+                }                
             }
         }
     };
