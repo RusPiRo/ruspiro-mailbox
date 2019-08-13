@@ -10,8 +10,8 @@
 //! This module provide the low level implementation of the mailbox property tag interface dealing with the actual
 //! peripherals. 
 //! 
-
 use ruspiro_register::define_registers;
+use ruspiro_cache as cache;
 
 // MMIO base address for peripherals
 #[cfg(feature="ruspiro_pi3")]
@@ -50,29 +50,32 @@ pub enum MailboxChannel {
     PropertyTagsArm = 0x9
 }
 
-/// Trait each mailbox property tag message need to implement to ensure type safety check during compile time
+/// Trait each mailbox property tag message need to implement.
+/// It is used as trait bound in the functions sending messages through the mailbox.
 pub trait MailboxMessage {
     fn get_state(&self) -> u32;
 }
 
-/// Type alias for convinient usage in the functions of this crate
+/// Type alias for Results of the functions in this module
 pub type MailboxResult<T> = Result<T, &'static str>;
 
-/// Function to send a specif message to the mailbox channel given
+/// Function to send a specific message to the mailbox channel given
 /// The mailbox interface does update the memory location of the message send. Therefor the function returns
 /// Ok with the updated message in case of a success
-pub fn send_message<T: MailboxMessage>(channel: MailboxChannel, message: &T) -> MailboxResult<&T> {
+#[inline(never)] // never inline, if inlined the compiler seem to mess up the | 0xC000_0000 and do a | 0xC000_0008?????
+pub(crate) fn send_message<T: MailboxMessage>(channel: MailboxChannel, message: &T) -> MailboxResult<&T> {
     let msg_ptr: *const T = message;
     let msg_ptr_uncached: u32 = (msg_ptr as u32) | 0xC000_0000;
-    //mem::invalidate_dcache();
-    write(channel, msg_ptr_uncached).and_then(|_| {
-        //mem::invalidate_dcache();
+    
+    cache::cleaninvalidate();
+    write(channel, msg_ptr_uncached).and_then(|_| {        
         read(channel).and_then(|_| {
+            cache::cleaninvalidate();
             let msg_state = message.get_state();
             if msg_state as u32 == MessageState::ResponseOk as u32 {
                 Ok(message)
-            } else {
-                Err("unable to send mailbox property tag message")
+            } else {                
+                Err("unable to send mailbox property tag message.")
             }
         })
     })
@@ -90,8 +93,6 @@ const MAILBOX_EMPTY:u32 = 0x4000_0000; // status register value if the mailbox i
 
 fn read(channel: MailboxChannel) -> MailboxResult<u32> {
     loop {
-        unsafe{ asm!("dmb") };
-        unsafe{ asm!("dsb") };
         while (MAILBOX0_STATUS::Register.get() & MAILBOX_EMPTY) != 0x0 {}
         let data = MAILBOX0_READ::Register.get();
         if (data & 0xF) == channel as u32 {            
@@ -101,8 +102,6 @@ fn read(channel: MailboxChannel) -> MailboxResult<u32> {
 }
 
 fn write(channel: MailboxChannel, data: u32) -> MailboxResult<()> {
-    unsafe{ asm!("dmb") };
-    unsafe{ asm!("dsb") };
     while (MAILBOX1_STATUS::Register.get() & MAILBOX_FULL) != 0x0 {}
     MAILBOX1_WRITE::Register.set((data & 0xFFFF_FFF0) | ((channel as u8) & 0xF) as u32);
     Ok(())

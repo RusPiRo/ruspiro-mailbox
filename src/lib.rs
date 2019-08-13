@@ -4,10 +4,8 @@
  * Author: André Borrmann 
  * License: Apache License 2.0
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.1.1")]
 #![no_std]
-#![feature(asm)]
-
 //! # Mailbox property tag interface
 //! 
 //! This crate provides an abstraction on the mailbox property tag interface available in the Raspberry Pi.
@@ -29,7 +27,6 @@
 //!     // use the mailbox to retrieve the core clock rate
 //!     if let Ok(core_rate) = MAILBOX.take_for(|mb| mb.get_clockrate(ArmClockId::Core)) {
 //!         // here we know the core clock rate do something with it...
-//!         // remeber - println is just a show case here as it might not be available in bare metal environment
 //!         println!("Core clock rate {}", core_rate);
 //!     }
 //! }
@@ -61,7 +58,14 @@ impl Mailbox {
         Mailbox
     }
 
-    /// Get the ARM memory base address and size as configured in the boot config file
+    /// Get the ARM memory base address and size as configured in the boot config file.
+    /// Returns a tuple Ok((address:u32, size:u32)) on success or an Err(msg: &str) on failure
+    /// # Example
+    /// ```
+    /// # fn demo() {
+    /// let arm_memory = MAILBOX.take_for(|mb| mb.get_arm_memory().expect("unable to get arm memory"));
+    /// # }
+    /// ```
     pub fn get_arm_memory(&self) -> MailboxResult<(u32, u32)> {
         send_message(
             MailboxChannel::PropertyTagsVc,
@@ -72,7 +76,14 @@ impl Mailbox {
         })
     }
 
-    /// Get the clock rate via mailbox interface for the clockId given
+    /// Get the clock rate via mailbox interface for the clockId given.
+    /// Returns Ok(rate:u32) on success or Err(msg: &str) on failure
+    /// # Example
+    /// ```
+    /// # fn demo() {
+    /// let clock_rate = MAILBOX.take_for(|mb| mb.get_clockrate(ArmClockId::Core).expect("unable to get core clock rate"));
+    /// # }
+    /// ```
     pub fn get_clockrate(&self, clock_id: ArmClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
@@ -83,6 +94,13 @@ impl Mailbox {
     }
 
     /// Set the clock rate via the mailbox interface for the clockId given. The rate will be set to the closest valid value.
+    /// Returns Ok(rate:u32) with the new clock rate set on success ore Err(msg: &str) on failure
+    /// # Example
+    /// ```
+    /// # fn demo() {
+    /// let new_clock_rate = MAILBOX.take_for(|mb| mb.set_clockrate(ArmClockId::Core, 250_000_000).expect("unable to set core clock rate"));
+    /// # }
+    /// ```
     pub fn set_clockrate(&self, clock_id: ArmClockId, rate: u32) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,

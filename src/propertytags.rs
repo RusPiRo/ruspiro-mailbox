@@ -23,6 +23,7 @@ mod macros;
 /// as the mailbox request message tag id will be automatically set
 #[repr(u32)]
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum PropertyTag {
     FirmwareRevisionGet = 0x0_0001,
     BoardModelGet       = 0x1_0001,
@@ -80,36 +81,37 @@ pub enum PropertyTag {
 }
 
 property_tag_message! (
-    ClockrateGet: 
-        REQUEST [
+    ClockrateGet: {
+        REQUEST: {
             clock_id: u32
-        ]
-
-        RESPONSE [
+        },
+        RESPONSE: {
             clock_id: u32,
             clock_rate: u32
-        ]
+        }
+    }
 );
 
 property_tag_message! (
-    ClockrateSet: 
-        REQUEST [
+    ClockrateSet: {
+        REQUEST: {
             clock_id: u32,
             clock_rate: u32,
             skip_turbo: u32
-        ]
-
-        RESPONSE [
+        },
+        RESPONSE: {
             clock_id: u32,
             clock_rate: u32
-        ]
+        }
+    }
 );
 
 property_tag_message!(
-    ArmMemoryGet:
-        REQUEST []
-        RESPONSE [
+    ArmMemoryGet: {
+        REQUEST: {},
+        RESPONSE: {
             base_address: u32,
             size: u32
-        ]
+        }
+    }
 );

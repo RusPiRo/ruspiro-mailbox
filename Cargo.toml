@@ -1,15 +1,19 @@
 [package]
 name = "ruspiro-mailbox"
 authors = ["André Borrmann <pspwizard@gmx.de>"]
-version = "0.1.0" # remember to update html_root_url
-description = "This crates provides an easy to consume API to send mailbox property tag messages on Raspberry Pi baremetal."
+version = "0.1.1" # remember to update html_root_url
+description = "Raspberry Pi mailbox property tag interface API."
 license = "Apache-2.0"
-repository = "https://github.com/RusPiRo/ruspiro-mailbox/tree/v0.1.0"
-documentation = "https://docs.rs/ruspiro-mailbox/0.1.0"
+repository = "https://github.com/RusPiRo/ruspiro-mailbox/tree/v0.1.1"
+documentation = "https://docs.rs/ruspiro-mailbox/0.1.1"
 readme = "README.md"
-keywords = ["RusPiRo", "mailbox", "property-tag", "raspberrypi", "baremetal"]
+keywords = ["RusPiRo", "mailbox", "propertytag", "raspberrypi", "baremetal"]
 categories = ["no-std", "embedded"]
 edition = "2018"
+
+[badges]
+travis-ci = { repository = "RusPiRo/ruspiro-sdk", branch = "master" }
+maintenance = { status = "actively-developed" }
 
 [lib]
 
@@ -17,6 +21,7 @@ edition = "2018"
 paste = "0.1.5"
 ruspiro-register = "0.1.1"
 ruspiro-singleton = "0.1.0"
+ruspiro-cache = "0.1.1"
 
 [features]
 default = ["ruspiro_pi3"]

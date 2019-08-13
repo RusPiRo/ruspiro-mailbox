@@ -19,7 +19,7 @@ Check the [official documentation](https://github.com/raspberrypi/firmware/wiki/
 To use the crate just add the following dependency to your ``Cargo.toml`` file:
 ```
 [dependencies]
-ruspiro-mailbox = "0.1.0"
+ruspiro-mailbox = "0.1.1"
 ```
 
 Once done the access to the mailbox interface access is available in your rust files like so:
