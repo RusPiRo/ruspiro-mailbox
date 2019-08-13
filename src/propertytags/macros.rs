@@ -18,9 +18,9 @@
 /// }
 /// ```
 macro_rules! property_tag_msg_request {
-    ($name:ident, [$($field:ident:$type:ty), *]) => {
+    ($name:ident, {$($field:ident:$type:ty), *}) => {
         #[repr(C)]
-        #[derive(Copy, Clone, Debug)]
+        #[derive(Copy, Clone)]
         pub struct $name {
             $(
                 $field: $type,
@@ -39,9 +39,9 @@ macro_rules! property_tag_msg_request {
 /// }
 /// ```
 macro_rules! property_tag_msg_response {
-    ($name:ident, [$($field:ident:$type:ty), *]) => {
+    ($name:ident, {$($field:ident:$type:ty), *}) => {
         #[repr(C)]
-        #[derive(Copy, Clone, Debug)]
+        #[derive(Copy, Clone)]
         pub struct $name {
             $(
                 pub $field: $type,
@@ -58,7 +58,7 @@ macro_rules! property_tag_msg_data {
             #[repr(C)]
             pub union $name {
                 request: [<$name Request>],
-                pub response: [<$name Response>]
+                response: [<$name Response>]
             }
         
             property_tag_msg_request!([<$name Request>], $req_fields);
@@ -70,21 +70,11 @@ macro_rules! property_tag_msg_data {
 /// This macros defines the required implementation for the property tag message structure defined so far
 /// 
 macro_rules! property_tag_msg_impl {
-    ($name:ident, [$($field:ident:$type:ty),*]) => {
+    ($name:ident, {$($field:ident:$type:ty),*}) => {
         paste::item! {
             impl MailboxMessage for $name {
                 fn get_state(&self) -> u32 {
                     self.msg_type
-                }
-
-                fn get_size(&self) -> u32 {
-                    self.msg_size
-                }
-            }
-
-            impl core::fmt::Debug for $name {
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {                    
-                    unsafe {write!(f, "MailboxMessage {:?} - {:?}", self.msg_tagid, self.msg_tagdata.response)}
                 }
             }
 
@@ -127,18 +117,20 @@ macro_rules! property_tag_msg_impl {
 /// ```
 /// # use rubo_mailbox::property_tag_message
 /// property_tag_message! {
-/// ClockrateGet:
-///     REQUEST [
-///         clockId: u32
-///     ]
-///     RESPONSE [
-///         clockId: u32,
-///         clockRate: u32
-///     ]
+///     ClockrateGet: {
+///         REQUEST: {
+///             clockId: u32
+///         },
+///         RESPONSE {
+///             clockId: u32,
+///             clockRate: u32
+///         }
+///     }
 /// }
 /// 
 /// # fn main() {
-/// let clockrage_msg = ClockrateGet::new(0x0001);
+/// // create a new clock rate get message for the clockId 0x1
+/// let clockrage_msg = ClockrateGet::new(0x1);
 /// # }
 /// ```
 /// The constructor **new** of the property tag message contains all parameters of the message request that need to be
@@ -146,7 +138,7 @@ macro_rules! property_tag_msg_impl {
 /// immediately used with the send function of the mailbox interface
 //#[macro_export]
 macro_rules! property_tag_message {
-    ($name:ident : REQUEST $req_fields:tt RESPONSE $rsp_fields:tt) => {
+    ($name:ident : { REQUEST: $req_fields:tt , RESPONSE: $rsp_fields:tt }) => {
 
         paste::item!{
             #[allow(dead_code)]
@@ -160,7 +152,7 @@ macro_rules! property_tag_message {
                 msg_tagsize: u32,
                 msg_tagstate: u32,
                 // tag data
-                pub msg_tagdata: [<$name Data>],
+                msg_tagdata: [<$name Data>],
                 // closing word to be set to 0
                 msg_end: u32
             }
