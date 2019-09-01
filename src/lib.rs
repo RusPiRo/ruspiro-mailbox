@@ -87,7 +87,7 @@ impl Mailbox {
     pub fn get_clockrate(&self, clock_id: ArmClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
-            &propertytags::ClockrateGet::new(clock_id as u32)
+            &propertytags::ClockrateGet::new(clock_id as u32, 0x0)
         ).and_then(|clock_rate_get| {
             Ok(clock_rate_get.get_response().clock_rate)
         })
