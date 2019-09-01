@@ -83,7 +83,8 @@ pub enum PropertyTag {
 property_tag_message! (
     ClockrateGet: {
         REQUEST: {
-            clock_id: u32
+            clock_id: u32,
+            clock_rate: u32
         },
         RESPONSE: {
             clock_id: u32,

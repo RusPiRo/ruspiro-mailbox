@@ -10,6 +10,10 @@
 //! This module provide the low level implementation of the mailbox property tag interface dealing with the actual
 //! peripherals. 
 //! 
+
+extern crate alloc;
+use alloc::*;
+
 use ruspiro_register::define_registers;
 use ruspiro_cache as cache;
 
@@ -62,11 +66,11 @@ pub type MailboxResult<T> = Result<T, &'static str>;
 /// Function to send a specific message to the mailbox channel given
 /// The mailbox interface does update the memory location of the message send. Therefor the function returns
 /// Ok with the updated message in case of a success
-#[inline(never)] // never inline, if inlined the compiler seem to mess up the | 0xC000_0000 and do a | 0xC000_0008?????
-pub(crate) fn send_message<T: MailboxMessage>(channel: MailboxChannel, message: &T) -> MailboxResult<&T> {
+#[inline(never)] // never inline, if inlined the compiler seem to mess up something
+pub(crate) fn send_message<'a, T: MailboxMessage>(channel: MailboxChannel, message: &'a T) -> MailboxResult<&'a T> {
     let msg_ptr: *const T = message;
-    let msg_ptr_uncached: u32 = (msg_ptr as u32) | 0xC000_0000;
-    
+    let msg_ptr_uncached: u32 = msg_ptr as u32 | 0xC000_0000;
+
     cache::cleaninvalidate();
     write(channel, msg_ptr_uncached).and_then(|_| {        
         read(channel).and_then(|_| {
@@ -74,7 +78,7 @@ pub(crate) fn send_message<T: MailboxMessage>(channel: MailboxChannel, message: 
             let msg_state = message.get_state();
             if msg_state as u32 == MessageState::ResponseOk as u32 {
                 Ok(message)
-            } else {                
+            } else {
                 Err("unable to send mailbox property tag message.")
             }
         })
@@ -103,6 +107,7 @@ fn read(channel: MailboxChannel) -> MailboxResult<u32> {
 
 fn write(channel: MailboxChannel, data: u32) -> MailboxResult<()> {
     while (MAILBOX1_STATUS::Register.get() & MAILBOX_FULL) != 0x0 {}
-    MAILBOX1_WRITE::Register.set((data & 0xFFFF_FFF0) | ((channel as u8) & 0xF) as u32);
+    let value = (data & 0xFFFF_FFF0) | ((channel as u8) & 0xF) as u32;
+    MAILBOX1_WRITE::Register.set(value);
     Ok(())
 }

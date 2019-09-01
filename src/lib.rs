@@ -4,7 +4,7 @@
  * Author: André Borrmann 
  * License: Apache License 2.0
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.2.0")]
 #![no_std]
 //! # Mailbox property tag interface
 //! 
@@ -31,6 +31,10 @@
 //!     }
 //! }
 //! ```
+//! 
+//! # Features
+//! - ``ruspiro_pi3`` is active by default and ensures the proper MMIO base address is compiled for Raspberry Pi 3
+//! 
 
 use ruspiro_singleton::Singleton;
 
@@ -87,7 +91,7 @@ impl Mailbox {
     pub fn get_clockrate(&self, clock_id: ArmClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
-            &propertytags::ClockrateGet::new(clock_id as u32)
+            &propertytags::ClockrateGet::new(clock_id as u32, 0x0)
         ).and_then(|clock_rate_get| {
             Ok(clock_rate_get.get_response().clock_rate)
         })
