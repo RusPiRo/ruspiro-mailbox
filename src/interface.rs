@@ -16,7 +16,6 @@ use alloc::*;
 
 use ruspiro_register::define_registers;
 use ruspiro_cache as cache;
-use ruspiro_console::*;
 
 // MMIO base address for peripherals
 #[cfg(feature="ruspiro_pi3")]
@@ -72,33 +71,14 @@ pub(crate) fn send_message<'a, T: MailboxMessage>(channel: MailboxChannel, messa
     let msg_ptr: *const T = message;
     let msg_ptr_uncached: u32 = msg_ptr as u32 | 0xC000_0000;
 
-    println!("bevore send: 0x{:X}", msg_ptr as u32);
-    let raw_msg = unsafe { core::slice::from_raw_parts(msg_ptr as *const u32, core::mem::size_of::<T>() / 4) };
-    for d in raw_msg {
-        println!("0x{:X}", d);
-    }
-    
     cache::cleaninvalidate();
     write(channel, msg_ptr_uncached).and_then(|_| {        
-        println!("after send: 0x{:X}", msg_ptr as u32);
-        let raw_msg = unsafe { core::slice::from_raw_parts(msg_ptr as *const u32, core::mem::size_of::<T>() / 4) };
-        for d in raw_msg {
-            println!("0x{:X}", d);
-        }
         read(channel).and_then(|_| {
             cache::cleaninvalidate();
             let msg_state = message.get_state();
-
-            println!("after read: 0x{:X}", msg_ptr as u32);
-            let raw_msg = unsafe { core::slice::from_raw_parts(msg_ptr as *const u32, core::mem::size_of::<T>() / 4) };
-            for d in raw_msg {
-                println!("0x{:X}", d);
-            }
-
             if msg_state as u32 == MessageState::ResponseOk as u32 {
                 Ok(message)
             } else {
-                //println!("mb error state: 0x{:X}, addr: 0x{:X}", msg_state, msg_ptr as u32);                                
                 Err("unable to send mailbox property tag message.")
             }
         })
@@ -119,9 +99,6 @@ fn read(channel: MailboxChannel) -> MailboxResult<u32> {
     loop {
         while (MAILBOX0_STATUS::Register.get() & MAILBOX_EMPTY) != 0x0 {}
         let data = MAILBOX0_READ::Register.get();
-        println!("mb0 status: 0x{:X}", MAILBOX0_STATUS::Register.get());
-        println!("mb1 status: 0x{:X}", MAILBOX1_STATUS::Register.get());
-        println!("data: 0x{:X}", data);
         if (data & 0xF) == channel as u32 {            
             return Ok(data & 0xFFFF_FFF0)
         }
@@ -130,9 +107,7 @@ fn read(channel: MailboxChannel) -> MailboxResult<u32> {
 
 fn write(channel: MailboxChannel, data: u32) -> MailboxResult<()> {
     while (MAILBOX1_STATUS::Register.get() & MAILBOX_FULL) != 0x0 {}
-    let value = (data & 0xFFFF_FFF0) | ((channel as u8) & 0xF);
-    println!("data: 0x{:X}", value);
-    MAILBOX1_WRITE::Register.set( value as u32);
-    println!("mb1 status: 0x{:X}", MAILBOX1_STATUS::Register.get());
+    let value = (data & 0xFFFF_FFF0) | ((channel as u8) & 0xF) as u32;
+    MAILBOX1_WRITE::Register.set(value);
     Ok(())
 }

@@ -12,7 +12,7 @@ categories = ["no-std", "embedded"]
 edition = "2018"
 
 [badges]
-travis-ci = { repository = "RusPiRo/ruspiro-sdk", branch = "master" }
+travis-ci = { repository = "RusPiRo/ruspiro-mailbox", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [lib]
@@ -22,7 +22,6 @@ paste = "0.1.5"
 ruspiro-register = "0.1"
 ruspiro-singleton = "0.2"
 ruspiro-cache = "0.1"
-ruspiro-console = "0.2"
 
 [features]
 default = ["ruspiro_pi3"]

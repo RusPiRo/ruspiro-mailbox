@@ -4,7 +4,7 @@
  * Author: André Borrmann 
  * License: Apache License 2.0
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.2.0")]
 #![no_std]
 //! # Mailbox property tag interface
 //! 
@@ -31,6 +31,10 @@
 //!     }
 //! }
 //! ```
+//! 
+//! # Features
+//! - ``ruspiro_pi3`` is active by default and ensures the proper MMIO base address is compiled for Raspberry Pi 3
+//! 
 
 use ruspiro_singleton::Singleton;
 
