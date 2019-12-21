@@ -1,25 +1,24 @@
-/*********************************************************************************************************************** 
+/***********************************************************************************************************************
  * Copyright (c) 2019 by the authors
- * 
- * Author: André Borrmann 
+ *
+ * Author: André Borrmann
  * License: Apache License 2.0
  **********************************************************************************************************************/
 
 //! # Low-level mailbox property tag interface
-//! 
+//!
 //! This module provide the low level implementation of the mailbox property tag interface dealing with the actual
-//! peripherals. 
-//! 
+//! peripherals.
+//!
 
 extern crate alloc;
 use alloc::*;
 
-use ruspiro_register::define_registers;
 use ruspiro_cache as cache;
-use ruspiro_console::*;
+use ruspiro_register::define_mmio_register;
 
 // MMIO base address for peripherals
-#[cfg(feature="ruspiro_pi3")]
+#[cfg(feature = "ruspiro_pi3")]
 const PERIPHERAL_BASE: u32 = 0x3F00_0000;
 
 // Mailbox MMIO base address
@@ -31,9 +30,9 @@ const MAILBOX_BASE: u32 = PERIPHERAL_BASE + 0x0000_B880;
 #[allow(dead_code)]
 pub enum MessageState {
     /// All outgoing messages are of the request type
-    Request       = 0x0,
+    Request = 0x0,
     /// If the message has been successfull processed by the receiver
-    ResponseOk    = 0x8000_0000,
+    ResponseOk = 0x8000_0000,
     /// If the message hs not been successfully or just partly successfully processed by the receiver
     ResponseError = 0x8000_0001,
 }
@@ -44,15 +43,15 @@ pub enum MessageState {
 #[allow(dead_code)]
 pub enum MailboxChannel {
     /// Power management channel
-    PowerMgmt       = 0x0,
+    PowerMgmt = 0x0,
     /// Framebuffer channel (shall not be used)
-    FrameBuffer     = 0x1,
+    FrameBuffer = 0x1,
     /// Virtual UART channel
-    VirtualUart     = 0x2,
+    VirtualUart = 0x2,
     /// Property tag channel to send from ARM to VideoCore
-    PropertyTagsVc  = 0x8,
+    PropertyTagsVc = 0x8,
     /// Property tag channel to send from VideoCore to ARM
-    PropertyTagsArm = 0x9
+    PropertyTagsArm = 0x9,
 }
 
 /// Trait each mailbox property tag message need to implement.
@@ -67,72 +66,54 @@ pub type MailboxResult<T> = Result<T, &'static str>;
 /// Function to send a specific message to the mailbox channel given
 /// The mailbox interface does update the memory location of the message send. Therefor the function returns
 /// Ok with the updated message in case of a success
-#[inline(never)] // never inline, if inlined the compiler seem to mess up something
-pub(crate) fn send_message<'a, T: MailboxMessage>(channel: MailboxChannel, message: &'a T) -> MailboxResult<&'a T> {
-    let msg_ptr: *const T = message;
-    let msg_ptr_uncached: u32 = msg_ptr as u32 | 0xC000_0000;
+// never inline, if inlined the compiler seem to mess up something and no mailbox call succeeds
+#[inline(never)]
+pub(crate) fn send_message<T: MailboxMessage>(
+    channel: MailboxChannel,
+    message: &mut T,
+) -> MailboxResult<&mut T> {
+    let msg_ptr: *mut T = message;
+    let msg_ptr_uncached: u32 = (msg_ptr as u32) | 0xC000_0000;
 
-    println!("bevore send: 0x{:X}", msg_ptr as u32);
-    let raw_msg = unsafe { core::slice::from_raw_parts(msg_ptr as *const u32, core::mem::size_of::<T>() / 4) };
-    for d in raw_msg {
-        println!("0x{:X}", d);
-    }
-    
     cache::cleaninvalidate();
-    write(channel, msg_ptr_uncached).and_then(|_| {        
-        println!("after send: 0x{:X}", msg_ptr as u32);
-        let raw_msg = unsafe { core::slice::from_raw_parts(msg_ptr as *const u32, core::mem::size_of::<T>() / 4) };
-        for d in raw_msg {
-            println!("0x{:X}", d);
-        }
+    write(channel, msg_ptr_uncached).and_then(|_| {
         read(channel).and_then(|_| {
             cache::cleaninvalidate();
             let msg_state = message.get_state();
-
-            println!("after read: 0x{:X}", msg_ptr as u32);
-            let raw_msg = unsafe { core::slice::from_raw_parts(msg_ptr as *const u32, core::mem::size_of::<T>() / 4) };
-            for d in raw_msg {
-                println!("0x{:X}", d);
-            }
-
             if msg_state as u32 == MessageState::ResponseOk as u32 {
                 Ok(message)
             } else {
-                //println!("mb error state: 0x{:X}, addr: 0x{:X}", msg_state, msg_ptr as u32);                                
                 Err("unable to send mailbox property tag message.")
             }
         })
     })
 }
 
-define_registers! [
-    MAILBOX0_READ: ReadOnly<u32> @ MAILBOX_BASE + 0x00,
-    MAILBOX0_STATUS: ReadOnly<u32> @ MAILBOX_BASE + 0x18,
-    MAILBOX1_WRITE: WriteOnly<u32> @ MAILBOX_BASE + 0x20,
-    MAILBOX1_STATUS: ReadOnly<u32> @ MAILBOX_BASE + 0x38
+define_mmio_register! [
+    MAILBOX0_READ<ReadOnly<u32>@(MAILBOX_BASE + 0x00)>,
+    MAILBOX0_STATUS<ReadOnly<u32>@(MAILBOX_BASE + 0x18)>,
+    MAILBOX1_WRITE<WriteOnly<u32>@(MAILBOX_BASE + 0x20)>,
+    MAILBOX1_STATUS<ReadOnly<u32>@(MAILBOX_BASE + 0x38)>
 ];
 
-const MAILBOX_FULL:u32  = 0x8000_0000; // status register value if the mailbox is already full
-const MAILBOX_EMPTY:u32 = 0x4000_0000; // status register value if the mailbox is empty
+const MAILBOX_FULL: u32 = 0x8000_0000; // status register value if the mailbox is already full
+const MAILBOX_EMPTY: u32 = 0x4000_0000; // status register value if the mailbox is empty
 
+#[inline(always)]
 fn read(channel: MailboxChannel) -> MailboxResult<u32> {
     loop {
         while (MAILBOX0_STATUS::Register.get() & MAILBOX_EMPTY) != 0x0 {}
         let data = MAILBOX0_READ::Register.get();
-        println!("mb0 status: 0x{:X}", MAILBOX0_STATUS::Register.get());
-        println!("mb1 status: 0x{:X}", MAILBOX1_STATUS::Register.get());
-        println!("data: 0x{:X}", data);
-        if (data & 0xF) == channel as u32 {            
-            return Ok(data & 0xFFFF_FFF0)
+        if (data & 0xF) == channel as u32 {
+            return Ok(data & 0xFFFF_FFF0);
         }
     }
 }
 
+#[inline(always)]
 fn write(channel: MailboxChannel, data: u32) -> MailboxResult<()> {
     while (MAILBOX1_STATUS::Register.get() & MAILBOX_FULL) != 0x0 {}
-    let value = (data & 0xFFFF_FFF0) | ((channel as u8) & 0xF);
-    println!("data: 0x{:X}", value);
-    MAILBOX1_WRITE::Register.set( value as u32);
-    println!("mb1 status: 0x{:X}", MAILBOX1_STATUS::Register.get());
+    let value = (data & 0xFFFF_FFF0) | ((channel as u8) & 0xF) as u32;
+    MAILBOX1_WRITE::Register.set(value as u32);
     Ok(())
 }

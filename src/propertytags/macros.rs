@@ -1,12 +1,12 @@
-/*********************************************************************************************************************** 
+/***********************************************************************************************************************
  * Copyright (c) 2019 by the authors
- * 
- * Author: André Borrmann 
+ *
+ * Author: André Borrmann
  * License: Apache License 2.0
  **********************************************************************************************************************/
 
 //! # Macro definitions to provide syntactic sugar when declaring a new property tag message structure
-//! 
+//!
 
 /// This macro defines the request part of the property tag message data
 /// The macro expands to:
@@ -51,16 +51,16 @@ macro_rules! property_tag_msg_response {
 }
 
 /// This macros defines the message part of the property tag and will contain the request and response
-/// 
+///
 macro_rules! property_tag_msg_data {
-    ($name:ident, $req_fields:tt, $rsp_fields:tt) => {        
+    ($name:ident, $req_fields:tt, $rsp_fields:tt) => {
         paste::item! {
             #[repr(C)]
             pub union $name {
                 request: [<$name Request>],
                 response: [<$name Response>]
             }
-        
+
             property_tag_msg_request!([<$name Request>], $req_fields);
             property_tag_msg_response!([<$name Response>], $rsp_fields);
         }
@@ -68,7 +68,7 @@ macro_rules! property_tag_msg_data {
 }
 
 /// This macros defines the required implementation for the property tag message structure defined so far
-/// 
+///
 macro_rules! property_tag_msg_impl {
     ($name:ident, {$($field:ident:$type:ty),*}) => {
         paste::item! {
@@ -103,17 +103,17 @@ macro_rules! property_tag_msg_impl {
 
                 pub fn get_response(&self) -> [<$name Data Response>] {
                     unsafe { self.msg_tagdata.response }
-                }                
+                }
             }
         }
     };
 }
 
 /// Helper macro to conviniently define a property tag message structure
-/// 
+///
 /// # Examples
-/// 
-/// 
+///
+///
 /// ```
 /// # use rubo_mailbox::property_tag_message
 /// property_tag_message! {
@@ -127,7 +127,7 @@ macro_rules! property_tag_msg_impl {
 ///         }
 ///     }
 /// }
-/// 
+///
 /// # fn main() {
 /// // create a new clock rate get message for the clockId 0x1
 /// let clockrage_msg = ClockrateGet::new(0x1);
@@ -139,12 +139,11 @@ macro_rules! property_tag_msg_impl {
 //#[macro_export]
 macro_rules! property_tag_message {
     ($name:ident : { REQUEST: $req_fields:tt , RESPONSE: $rsp_fields:tt }) => {
-
-        paste::item!{
+        paste::item! {
             #[allow(dead_code)]
             #[repr(C, align(16))]
             pub struct $name {
-                // message header                
+                // message header
                 msg_size: u32,
                 msg_type: u32,
                 // tag header
