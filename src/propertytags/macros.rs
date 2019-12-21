@@ -20,7 +20,7 @@
 macro_rules! property_tag_msg_request {
     ($name:ident, {$($field:ident:$type:ty), *}) => {
         #[repr(C)]
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Debug)]
         pub struct $name {
             $(
                 $field: $type,
@@ -41,7 +41,7 @@ macro_rules! property_tag_msg_request {
 macro_rules! property_tag_msg_response {
     ($name:ident, {$($field:ident:$type:ty), *}) => {
         #[repr(C)]
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Debug)]
         pub struct $name {
             $(
                 pub $field: $type,
@@ -136,7 +136,6 @@ macro_rules! property_tag_msg_impl {
 /// The constructor **new** of the property tag message contains all parameters of the message request that need to be
 /// passed to create the message. The created message is always at a 32bit aligned memory address and could be
 /// immediately used with the send function of the mailbox interface
-//#[macro_export]
 macro_rules! property_tag_message {
     ($name:ident : { REQUEST: $req_fields:tt , RESPONSE: $rsp_fields:tt }) => {
         paste::item! {

@@ -15,6 +15,7 @@ extern crate alloc;
 use alloc::*;
 
 use ruspiro_cache as cache;
+use ruspiro_console::*;
 use ruspiro_register::define_mmio_register;
 
 // MMIO base address for peripherals
@@ -67,26 +68,30 @@ pub type MailboxResult<T> = Result<T, &'static str>;
 /// The mailbox interface does update the memory location of the message send. Therefor the function returns
 /// Ok with the updated message in case of a success
 // never inline, if inlined the compiler seem to mess up something and no mailbox call succeeds
-#[inline(never)]
+//#[inline(never)]
 pub(crate) fn send_message<T: MailboxMessage>(
     channel: MailboxChannel,
-    message: &mut T,
-) -> MailboxResult<&mut T> {
-    let msg_ptr: *mut T = message;
+    mut message: T,
+) -> MailboxResult<T> {
+    let msg_ptr: *mut T = &mut message;
     let msg_ptr_uncached: u32 = (msg_ptr as u32) | 0xC000_0000;
 
     cache::cleaninvalidate();
-    write(channel, msg_ptr_uncached).and_then(|_| {
-        read(channel).and_then(|_| {
-            cache::cleaninvalidate();
-            let msg_state = message.get_state();
-            if msg_state as u32 == MessageState::ResponseOk as u32 {
-                Ok(message)
-            } else {
-                Err("unable to send mailbox property tag message.")
-            }
-        })
-    })
+    write(channel, msg_ptr_uncached)?;
+    read(channel)?;
+    cache::cleaninvalidate();
+    // at this point the property tag message memory has been changed under the hood
+    // that rust is not aware of, so optimizations might do things that will loose this fact
+    // so read this memory location back into the corresponding message type T
+    let result_ptr = (msg_ptr_uncached ^ 0xC000_0000) as *mut T;
+    //println!("result/origin ptr: {:X} / {:X}", result_ptr as usize, msg_ptr as usize);
+    let result = unsafe { core::ptr::read_volatile(result_ptr) };
+    let result_state = result.get_state();
+    if result_state == MessageState::ResponseOk as u32 {
+        Ok(result)
+    } else {
+        Err("unable to send mailbox property tag message.")
+    }
 }
 
 define_mmio_register! [
@@ -114,6 +119,6 @@ fn read(channel: MailboxChannel) -> MailboxResult<u32> {
 fn write(channel: MailboxChannel, data: u32) -> MailboxResult<()> {
     while (MAILBOX1_STATUS::Register.get() & MAILBOX_FULL) != 0x0 {}
     let value = (data & 0xFFFF_FFF0) | ((channel as u8) & 0xF) as u32;
-    MAILBOX1_WRITE::Register.set(value as u32);
+    MAILBOX1_WRITE::Register.set(value);
     Ok(())
 }

@@ -32,12 +32,17 @@ pub enum PropertyTag {
     BoardSerialGet = 0x1_0004,
     /// Retrieve ARM memory base address and size
     ArmMemoryGet = 0x1_0005,
+    /// Retrieve VC/GPU memory base address and size
     VcMemoryGet = 0x1_0006,
     ClocksGet = 0x1_0007,
+    /// Get the power state of a specific device
     PowerStateGet = 0x2_0001,
     TimingGet = 0x2_0002,
+    /// Set the power state of a specific device
     PowerStateSet = 0x2_8001,
+    /// Get the state of a specific clock
     ClockStateGet = 0x3_0001,
+    /// Set the state of a specific clock
     ClockStateSet = 0x3_8001,
     /// Reading the current clock rate of a given clock ID
     ClockrateGet = 0x3_0002,
@@ -80,6 +85,31 @@ pub enum PropertyTag {
     PaletteSet = 0x4_800B,
 }
 
+property_tag_message!(
+    ClockStateGet: {
+        REQUEST: {
+            clock_id: u32
+        },
+        RESPONSE: {
+            clock_id: u32,
+            state: u32
+        }
+    }
+);
+
+property_tag_message!(
+    ClockStateSet: {
+        REQUEST: {
+            clock_id: u32,
+            state: u32
+        },
+        RESPONSE: {
+            clock_id: u32,
+            state: u32
+        }
+    }
+);
+
 property_tag_message! (
     ClockrateGet: {
         REQUEST: {
@@ -113,6 +143,41 @@ property_tag_message!(
         RESPONSE: {
             base_address: u32,
             size: u32
+        }
+    }
+);
+
+property_tag_message!(
+    VcMemoryGet: {
+        REQUEST: {},
+        RESPONSE: {
+            base_address: u32,
+            size: u32
+        }
+    }
+);
+
+property_tag_message!(
+    PowerStateGet: {
+        REQUEST: {
+            device_id: u32
+        },
+        RESPONSE: {
+            device_id: u32,
+            state: u32
+        }
+    }
+);
+
+property_tag_message!(
+    PowerStateSet: {
+        REQUEST: {
+            device_id: u32,
+            state: u32
+        },
+        RESPONSE: {
+            device_id: u32,
+            state: u32
         }
     }
 );
