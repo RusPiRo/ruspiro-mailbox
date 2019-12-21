@@ -30,7 +30,6 @@ fn demo() {
     // use the mailbox to retrieve the core clock rate
     if let Ok(core_rate) = MAILBOX.take_for(|mb| mb.get_clockrate(ArmClockId::Core)) {
         // here we know the core clock rate do something with it...
-        // remeber - println is just a show case and might not be available in bare metal environment
         println!("Core clock rate {}", core_rate);
     }
 }

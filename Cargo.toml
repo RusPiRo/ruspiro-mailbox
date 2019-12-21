@@ -12,7 +12,7 @@ categories = ["no-std", "embedded"]
 edition = "2018"
 
 [badges]
-travis-ci = { repository = "RusPiRo/ruspiro-sdk", branch = "master" }
+travis-ci = { repository = "RusPiRo/ruspiro-mailbox", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [lib]
