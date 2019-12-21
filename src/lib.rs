@@ -31,6 +31,10 @@
 //!     }
 //! }
 //! ```
+//! 
+//! # Features
+//! - ``ruspiro_pi3`` is active by default and ensures the proper MMIO base address is compiled for Raspberry Pi 3
+//! 
 
 use ruspiro_singleton::Singleton;
 
