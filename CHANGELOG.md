@@ -4,9 +4,11 @@
     Support several Raspberry Pi mailbox messages like:<br>
     - GetArmMemory
     - GetVCMemory
+    - GetBoardMACAddress
     - GetClockState
     - SetClockState
     - GetClockRate
     - SetClockRate
+    - GetMaxClockrate
     - GetPowerState
     - SetPowerState

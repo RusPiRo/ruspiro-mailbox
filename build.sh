@@ -47,4 +47,4 @@ export CC="${PREFIX}gcc"
 export AR="${PREFIX}ar"
 export TARGET="${TARGET}"
 
-cargo xbuild --target ${TARGET} --release
+cargo xbuild --target ${TARGET} --release --features ruspiro_pi3
