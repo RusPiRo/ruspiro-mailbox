@@ -77,7 +77,7 @@ pub(crate) fn send_batch<T>(
     // we need to ensure the previous one does not get dropped as this might release
     // resources now used be the reconstructed version
     core::mem::forget(batch);
-    if let MessageState::ResponseOk = result.msg_type {
+    if let MessageState::ResponseOk = result.get_state() {
         Ok(result)
     } else {
         Err("unable to send mailbox property tag message.")

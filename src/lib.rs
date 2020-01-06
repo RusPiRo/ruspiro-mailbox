@@ -54,20 +54,20 @@
 //!
 //! fn main() {
 //!     // first create a new empty batch
-//!     let mut batch = MailboxBatch::empty();
+//!     let mut batch = MailboxBatch::empty()
 //!     // add as many tags as required to the batch, ensuring there will never be a duplicate
-//!     let _ = batch.add_tag(ClockrateGet::new(ClockId::Core));
-//!     // let _ = batch.add_tag(ClockrateGet::new(ClockId::Uart)); // even this is a different clockId, the same tag is not allowed
-//!     let _ = batch.add_tag(MaxClockrateGet::new(ClockId::Arm));
+//!         .with_tag(ClockrateGet::new(ClockId::Core))
+//!         //.with_tag(ClockrateGet::new(ClockId::Uart))
+//!         .with_tag(MaxClockrateGet::new(ClockId::Arm));
 //!
 //!     // execute the batch using the mailbox peripheral
 //!     if let Ok(batch) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
 //!         // as the batch processing has been successfull we can check individual
 //!         // tag responses
 //!         println!("Core clock rate: {}",
-//!             batch.get_tag::<ClockrateGet>().unwrap().response().clock_rate());
+//!             batch.get_tag::<ClockrateGet, _>().response().clock_rate());
 //!         println!("Max Arm clock rate: {}",
-//!             batch.get_tag::<MaxClockrateGet>().unwrap().response().clock_rate());
+//!             batch.get_tag::<MaxClockrateGet, _>().response().clock_rate());
 //!     }
 //! }
 //! ```
@@ -90,7 +90,7 @@ pub static MAILBOX: Singleton<Mailbox> = Singleton::new(Mailbox::new());
 
 /// Definition of the different clock id's used in the mailbox interface
 #[repr(u32)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ClockId {
     Emmc = 0x1,
     Uart = 0x2,

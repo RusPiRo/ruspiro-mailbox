@@ -1,7 +1,7 @@
 # Changelog
 ## :carrot: v0.3.0
   - ### :bulb: Features
-    Support several Raspberry Pi mailbox messages like:<br>
+    Support several Raspberry Pi mailbox property tags like:<br>
     - GetArmMemory
     - GetVCMemory
     - GetBoardMACAddress
@@ -12,3 +12,5 @@
     - GetMaxClockrate
     - GetPowerState
     - SetPowerState
+
+  Support batch processing of mailbox property tags.<br>

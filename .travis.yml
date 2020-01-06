@@ -41,4 +41,10 @@ matrix:
       install:
         # remove local path in the dependencies of the cargo file to ensure we use the version from crates.io
         - sed -i 's/path.*=.*"\.\{2\}.*", version/version/g' Cargo.toml
-      script: cargo test --tests
+      script: cargo test --tests --features ruspiro_pi3
+
+    - name: "doc tests"
+      install:
+        # remove local path in the dependencies of the cargo file to ensure we use the version from crates.io
+        - sed -i 's/path.*=.*"\.\{2\}.*", version/version/g' Cargo.toml
+      script: cargo test --doc --features ruspiro_pi3

@@ -1,12 +1,18 @@
 /***************************************************************************************************
  * Copyright (c) 2019 by the authors
  *
+ * Thanks to the help of https://users.rust-lang.org/u/krishnasannasi/summary at this post:
+ * https://users.rust-lang.org/t/request-feedback-on-an-implementation-to-store-messages-in-a-byte-array-batch-and-retrieve-them-back/36557
+ * this MailboxBatch implementation ensures type safety on the PropertyTags added and their retrieval.
+ * So the compiler will be able to raise an error if a tag is tried to retrieved from the batch the
+ * same has not being created with.
+ *
  * Author: André Borrmann
  * License: Apache License 2.0
  **************************************************************************************************/
 
 //! # MailboxBatch message
-//!
+//! This enables to possibility to send a batch of [PropertyTag]s to the mailbox.
 
 use crate::propertytags::*;
 use crate::MessageState;
@@ -16,7 +22,7 @@ use crate::MessageState;
 #[repr(C, align(16))]
 pub struct MailboxBatch<Tags> {
     msg_size: u32,
-    pub msg_type: MessageState,
+    msg_type: MessageState,
     msg_tags: Tags,
     msg_end: u32,
 }
@@ -63,7 +69,7 @@ impl<Tags: PropertyTagList> MailboxBatch<Tags> {
     /// a builder pattern ?
     /// As the tags are concecutive in the linked list they are also layed out concecutive in the memory
     /// as we require it to happen, the batch header part and the final u32 are kept in place...
-    pub fn add_tag<Tag>(self, tag: Tag) -> MailboxBatch<Cons<Tags, Tag>> {
+    pub fn with_tag<Tag>(self, tag: Tag) -> MailboxBatch<Cons<Tags, Tag>> {
         MailboxBatch {
             msg_size: self.msg_size + core::mem::size_of::<Tag>() as u32,
             msg_type: self.msg_type,
@@ -75,12 +81,21 @@ impl<Tags: PropertyTagList> MailboxBatch<Tags> {
         }
     }
 
-    /// The tricky part to find a tag after it has been added based on it's type
-    pub fn find<Tag, Pos>(&self) -> &Tag
+    /// The tricky part to find a tag after it has been added based on it's type. So there is some
+    /// recursive type inference and stuff going on that keeps on going to find the right type that
+    /// implements the ``find`` method for the requested tag type and returns a reference to it.
+    pub fn get_tag<Tag, Pos>(&self) -> &Tag
     where
         Tags: FindTag<Tag, Pos>,
     {
         self.msg_tags.find()
+    }
+}
+
+impl<T> MailboxBatch<T> {
+    /// Retrieve the current state of this batch
+    pub fn get_state(&self) -> MessageState {
+        self.msg_type
     }
 }
 
@@ -117,7 +132,7 @@ mod tests {
 
     #[test]
     fn create_single_item_batch() {
-        let batch = MailboxBatch::empty().add_tag(ClockrateGet::new(ClockId::Core));
+        let batch = MailboxBatch::empty().with_tag(ClockrateGet::new(ClockId::Core));
 
         println!("Batch: {:#?}", batch);
         let slice = unsafe {
@@ -128,15 +143,32 @@ mod tests {
         };
         println!("message binary: {:#X?}", slice);
 
-        let _ = batch.find::<ClockrateGet, _>();
+        let _ = batch.get_tag::<ClockrateGet, _>();
     }
 
     #[test]
     fn create_multiple_item_batch() {
         let batch = MailboxBatch::empty()
-            .add_tag(ClockrateGet::new(ClockId::Core))
-            .add_tag(MaxClockrateGet::new(ClockId::Arm))
-            .add_tag(BoardMACAddressGet::new());
+            .with_tag(ClockrateGet::new(ClockId::Core))
+            .with_tag(MaxClockrateGet::new(ClockId::Arm))
+            .with_tag(BoardMACAddressGet::new());
+
+        println!("Batch: {:#?}", batch);
+        let slice = unsafe {
+            core::slice::from_raw_parts(
+                &batch as *const MailboxBatch<_> as *const u32,
+                (batch.msg_size >> 2) as usize,
+            )
+        };
+        println!("message binary: {:#X?}", slice);
+    }
+
+    #[test]
+    fn retrieve_multiple_item_batch() {
+        let batch = MailboxBatch::empty()
+            .with_tag(ClockrateGet::new(ClockId::Core))
+            //.with_tag(ClockrateGet::new(ClockId::Arm))
+            .with_tag(BoardMACAddressGet::new());
 
         println!("Batch: {:#?}", batch);
         let slice = unsafe {
@@ -147,6 +179,9 @@ mod tests {
         };
         println!("message binary: {:#X?}", slice);
 
-        let _ = batch.find::<MaxClockrateGet, _>();
+        assert_eq!(
+            batch.get_tag::<ClockrateGet, _>().response().clock_id(),
+            ClockId::Core
+        );
     }
 }
