@@ -21,7 +21,7 @@ macro_rules! property_tag_request {
     ($name:ident, {$($field:ident:$type:ty), *}) => {
         #[doc(hidden)]
         #[repr(C)]
-        #[derive(Copy, Clone, Debug)]
+        #[derive(Copy, Clone)]
         pub struct $name {
             $(
                 $field: $type,
@@ -43,7 +43,7 @@ macro_rules! property_tag_response {
     ($name:ident, {$($field:ident:$type:ty), *}) => {
         #[doc(hidden)]
         #[repr(C)]
-        #[derive(Copy, Clone, Debug)]
+        #[derive(Copy, Clone)]
         pub struct $name {
             $(
                 pub $field: $type,
@@ -83,12 +83,13 @@ macro_rules! property_tag_data {
 
             property_tag_request!([<$name Request>], $req_fields);
             property_tag_response!([<$name Response>], $rsp_fields);
-
+/*
             impl core::fmt::Debug for $name {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                     write!(f, "{:?}", unsafe { self.response })
                 }
             }
+*/
         }
     };
 }
@@ -220,7 +221,7 @@ macro_rules! property_tag {
             $(#[doc = $doc])*
             #[allow(dead_code)]
             #[repr(C, packed)]
-            #[derive(Debug, Copy, Clone)]
+            #[derive(Copy, Clone)]
             pub struct $name {
                 /// Property Tag Id. See [PropertyTagId]
                 tagid: PropertyTagId,

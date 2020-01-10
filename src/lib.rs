@@ -9,17 +9,49 @@
 //! # Mailbox property tag interface
 //!
 //! This crate provides an abstraction to the mailbox property tag interface available on the Raspberry Pi.
-//! There are currently a limmited number of functions for the following property tag messages implemented:
-//! - GetArmMemory
-//! - GetVCMemory
-//! - GetBoardMACAddress
-//! - GetClockState
-//! - SetClockState
-//! - GetClockRate
-//! - SetClockRate
-//! - GetMaxClockrate
-//! - GetPowerState
-//! - SetPowerState
+//! There are currently the following property tag messages implemented:
+//! - FirmwareRevisionGet
+//! - BoardModelGet
+//! - BoardRevisionGet
+//! - BoardSerialGet
+//! - ArmMemoryGet
+//! - BoardMACAddressGet
+//! - VcMemoryGet
+//! - DmaChannelsGet
+//! - PowerStateGet
+//! - PowerStateSet
+//! - ClockStateGet
+//! - ClockStateSet
+//! - ClockrateGet
+//! - ClockrateSet
+//! - MaxClockrateGet
+//! - MinClockrateGet
+//! - VoltageGet
+//! - VoltageSet
+//! - MaxVoltageGet
+//! - MinVoltageGet
+//! - TemperatureGet
+//! - MaxTemperatureGet
+//! - FramebufferAllocate
+//! - FramebufferRelease
+//! - BlankScreen
+//! - PhysicalSizeGet
+//! - PhysicalSizeSet
+//! - VirtualSizeGet
+//! - VirtualSizeSet
+//! - DepthGet
+//! - DepthSet
+//! - PixelOrderGet
+//! - PixelOrderSet
+//! - AlphaModeGet
+//! - AlphaModeSet
+//! - PitchGet
+//! - VirtualOffsetGet
+//! - VirtualOffsetSet
+//! - OverscanGet
+//! - OverscanSet
+//! - PaletteGet
+//! - PaletteSet
 //!
 //! Check the [official documentation](https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface)
 //! of those property tags and their purpose.
@@ -55,9 +87,8 @@
 //! fn main() {
 //!     // first create a new empty batch
 //!     let mut batch = MailboxBatch::empty()
-//!     // add as many tags as required to the batch, ensuring there will never be a duplicate
+//!     // add as many tags as required to the batch
 //!         .with_tag(ClockrateGet::new(ClockId::Core))
-//!         //.with_tag(ClockrateGet::new(ClockId::Uart))
 //!         .with_tag(MaxClockrateGet::new(ClockId::Arm));
 //!
 //!     // execute the batch using the mailbox peripheral
@@ -120,6 +151,16 @@ pub enum DeviceId {
     Ccp2Tx = 0x0000_0008,
 }
 
+/// Definition of the different Voltage Id's on Raspberry Pi
+#[repr(u32)]
+#[derive(Copy, Clone, Debug)]
+pub enum VoltageId {
+    Core = 0x01,
+    SdRamC = 0x02,
+    SdRamP = 0x03,
+    SdRamI = 0x04,
+}
+
 /// Definition of the different mailbox channels to be used for communication
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
@@ -161,8 +202,51 @@ impl Mailbox {
         Mailbox
     }
 
+    /// Send a mailbox batch message
+    /// # Example
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let batch = MailboxBatch::empty().with_tag(ClockrateGet::new());
+    /// let _ = MAILBOX.take_for(|mb| mb.send_batch(batch));
+    /// # }
+    /// ```
     pub fn send_batch<T>(&self, batch: MailboxBatch<T>) -> MailboxResult<MailboxBatch<T>> {
         send_batch(MailboxChannel::PropertyTagsVc, batch)
+    }
+
+    /// Get the firmware revision of this Raspberry Pi
+    pub fn get_firmware_revision(&self) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            FirmwareRevisionGet::new().into()
+        ).map(|message| message.response().firmware_revision())
+    }
+
+    /// Get the board model of this Raspberry Pi
+    pub fn get_board_model(&self) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            BoardModelGet::new().into()
+        ).map(|message| message.response().board_model())
+    }
+
+    /// Get the board revision of this Raspberry Pi. Check out https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
+    /// for the encoding of the returned value
+    pub fn get_board_revision(&self) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            BoardRevisionGet::new().into()
+        ).map(|message| message.response().board_revision())
+    }
+
+    /// Get the MAC address of this Raspberry Pi
+    pub fn get_board_mac_address(&self) -> MailboxResult<[u8; 6]> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            BoardMACAddressGet::new().into(),
+        )
+        .map(|message| message.response().mac_address())
     }
 
     /// Get the ARM memory base address and size as configured in the boot config file.
@@ -197,6 +281,56 @@ impl Mailbox {
             let response = message.response();
             (response.base_address(), response.size())
         })
+    }
+
+    /// Get the active DMA channels.<br>
+    /// Bits 0-15  of the response represents the DMA channels 0-15. If the corresponding bit is set for a
+    /// channel it is usable. Bits 16-31 are reserved
+    pub fn get_dma_channels(&self) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            DmaChannelsGet::new().into()
+        ).map(|message| message.response().channel_mask())
+    }
+
+    /// Get the power state of the given device id.
+    /// The returned state could have the following values:
+    /// Bit 0: 0 = off, 1 = on
+    /// Bit 1: 0 = device exists, 1 = device unknown
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn demo() {
+    /// let power_state = MAILBOX.take_for(|mb| mb.get_powerstate(DeviceId::SdCard)).unwrap();
+    /// # }
+    /// ```
+    pub fn get_powerstate(&self, device_id: DeviceId) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            PowerStateGet::new(device_id).into(),
+        )
+        .map(|message| message.response().state())
+    }
+
+    /// Set the power state of the given device id.
+    /// The state to be set should contain those values:
+    /// Bit 0: 0 = off, 1 = on
+    /// Bit 1: 0 = don't wait for device state change, 1 = wait for device state change
+    /// The returned state contains the following values:
+    /// Bit 0: 0 = off, 1 = on
+    /// Bit 1: 0 = device exists, 1 = device unknown
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn demo() {
+    /// let new_power_state = MAILBOX.take_for(|mb| mb.set_powerstate(DeviceId::SdCard, 0b11))
+    ///     .unwrap();
+    /// # }
+    /// ```
+    pub fn set_powerstate(&self, device_id: DeviceId, state: u32) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            PowerStateSet::new(device_id, state).into(),
+        )
+        .map(|message| message.response().state())
     }
 
     /// Get the clock state of the given clock id.
@@ -273,6 +407,7 @@ impl Mailbox {
         .map(|message| message.response().clock_rate())
     }
 
+    /// Get the maximum available clock rate for the given clock id
     pub fn get_max_clock_rate(&self, clock_id: ClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
@@ -281,51 +416,65 @@ impl Mailbox {
         .map(|message| message.response().clock_rate())
     }
 
-    /// Get the power state of the given device id.
-    /// The returned state could have the following values:
-    /// Bit 0: 0 = off, 1 = on
-    /// Bit 1: 0 = device exists, 1 = device unknown
-    /// ```no_run
-    /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let power_state = MAILBOX.take_for(|mb| mb.get_powerstate(DeviceId::SdCard)).unwrap();
-    /// # }
-    /// ```
-    pub fn get_powerstate(&self, device_id: DeviceId) -> MailboxResult<u32> {
+    /// Get the minimum available clock rate for the given clock id
+    pub fn get_min_clock_rate(&self, clock_id: ClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
-            PowerStateGet::new(device_id).into(),
+            MinClockrateGet::new(clock_id).into(),
         )
-        .map(|message| message.response().state())
+        .map(|message| message.response().clock_rate())
     }
 
-    /// Set the power state of the given device id.
-    /// The state to be set should contain those values:
-    /// Bit 0: 0 = off, 1 = on
-    /// Bit 1: 0 = don't wait for device state change, 1 = wait for device state change
-    /// The returned state contains the following values:
-    /// Bit 0: 0 = off, 1 = on
-    /// Bit 1: 0 = device exists, 1 = device unknown
-    /// ```no_run
-    /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let new_power_state = MAILBOX.take_for(|mb| mb.set_powerstate(DeviceId::SdCard, 0b11))
-    ///     .unwrap();
-    /// # }
-    /// ```
-    pub fn set_powerstate(&self, device_id: DeviceId, state: u32) -> MailboxResult<u32> {
+    /// Get the current voltage of the given [VoltageId]. The value represents an offset from
+    /// 1.2V in units of 0.025V.
+    pub fn get_voltage(&self, voltage_id: VoltageId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
-            PowerStateSet::new(device_id, state).into(),
-        )
-        .map(|message| message.response().state())
+            VoltageGet::new(voltage_id).into()
+        ).map(|message| message.response().value())
     }
 
-    pub fn get_board_mac_address(&self) -> MailboxResult<[u8; 6]> {
+    /// Set the current voltage for the given [VoltageId]. The value represents an offset from
+    /// 1.2V in units of 0.025V.
+    pub fn set_voltage(&self, voltage_id: VoltageId, value: u32) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
-            BoardMACAddressGet::new().into(),
-        )
-        .map(|message| message.response().mac_address())
+            VoltageSet::new(voltage_id, value).into()
+        ).map(|message| message.response().value())
+    }
+
+    /// Get the maximum voltage of the given [VoltageId]. The value represents an offset from
+    /// 1.2V in units of 0.025V.
+    pub fn get_max_voltage(&self, voltage_id: VoltageId) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            MaxVoltageGet::new(voltage_id).into()
+        ).map(|message| message.response().value())
+    }
+
+    /// Get the minimum voltage of the given [VoltageId]. The value represents an offset from
+    /// 1.2V in units of 0.025V.
+    pub fn get_min_voltage(&self, voltage_id: VoltageId) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            MinVoltageGet::new(voltage_id).into()
+        ).map(|message| message.response().value())
+    }
+
+    /// Get the current temperature in thousandths of a degree Celsius.
+    pub fn get_temperature(&self) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            TemperatureGet::new(0x0).into()
+        ).map(|message| message.response().value())
+    }
+
+    /// Get the maximum safe temperature in thousandths of a degree Celsius. Above this temperature
+    /// overclocking/turbo might get deactivated
+    pub fn get_max_temperature(&self) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            MaxTemperatureGet::new(0x0).into()
+        ).map(|message| message.response().value())
     }
 }

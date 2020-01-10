@@ -6,13 +6,34 @@
  * this MailboxBatch implementation ensures type safety on the PropertyTags added and their retrieval.
  * So the compiler will be able to raise an error if a tag is tried to retrieved from the batch the
  * same has not being created with.
+ * The original idea is found in the [trunk](https://crates.io/crates/frunk) crate.
  *
  * Author: André Borrmann
  * License: Apache License 2.0
  **************************************************************************************************/
 
 //! # MailboxBatch message
-//! This enables to possibility to send a batch of [PropertyTag]s to the mailbox.
+//! This enables the possibility to send a batch of [PropertyTag]s to the mailbox. This is especialy
+//! needed if it comes to setup the framebuffer for example.
+//! 
+//! # Usage
+//! ```no_run
+//! use ruspiro_mailbox::*;
+//! 
+//! fn doc() {
+//!     let batch = MailboxBatch::empty()
+//!         .with_tag(PhysicalSizeSet::new(1024, 768))
+//!         .with_tag(VirtualSizeSet::new(1024, 768))
+//!         .with_tag(DepthSet::new(8))
+//!         .with_tag(VirtualOffsetSet::new(0, 0))
+//!         .with_tag(PitchGet::new())
+//!         .with_tag(FramebufferAllocate::new(4));
+//! 
+//!     if let Ok(batch_result) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
+//!         let tag_response = batch_result.get_tag::<PitchGet>().response();
+//!     }
+//! }
+//! ```
 
 use crate::propertytags::*;
 use crate::MessageState;
@@ -28,11 +49,13 @@ pub struct MailboxBatch<Tags> {
 }
 
 /// Define a trait that allows to constrain the ``Tags`` generics used with the [MailboxBatch]
+#[doc(hidden)]
 pub trait PropertyTagList {}
 
 /// Define linked list of tags contained in the [MailboxBatch]. This is a compiletime only list. On
 /// memory the different concecutive tags exists as packed array (hopefully)
 #[derive(Debug, Clone, Copy)]
+#[doc(hidden)]
 pub struct Cons<Prev, Tag> {
     previous: Prev,
     tag: Tag,
@@ -40,6 +63,7 @@ pub struct Cons<Prev, Tag> {
 
 /// Define the 'Empty' batch
 #[derive(Debug)]
+#[doc(hidden)]
 pub struct Empty;
 
 /// Implement the [PropertyTagList] trait for the Cons structure.
@@ -100,12 +124,15 @@ impl<T> MailboxBatch<T> {
 }
 
 /// A trait that defines that it can find a tag of a specified type in the linked list Cons
+#[doc(hidden)]
 pub trait FindTag<Tag, Pos> {
     fn find(&self) -> &Tag;
 }
 
 /// Positions where we would like to find the correct type
+#[doc(hidden)]
 pub struct Here;
+#[doc(hidden)]
 pub struct Next<T>(T);
 
 /// Implement the find trait for the Cons<_,_> structure that is only available if the types of the
