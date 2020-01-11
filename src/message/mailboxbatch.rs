@@ -15,11 +15,11 @@
 //! # MailboxBatch message
 //! This enables the possibility to send a batch of [PropertyTag]s to the mailbox. This is especialy
 //! needed if it comes to setup the framebuffer for example.
-//! 
+//!
 //! # Usage
 //! ```no_run
 //! use ruspiro_mailbox::*;
-//! 
+//!
 //! fn doc() {
 //!     let batch = MailboxBatch::empty()
 //!         .with_tag(PhysicalSizeSet::new(1024, 768))
@@ -28,9 +28,9 @@
 //!         .with_tag(VirtualOffsetSet::new(0, 0))
 //!         .with_tag(PitchGet::new())
 //!         .with_tag(FramebufferAllocate::new(4));
-//! 
+//!
 //!     if let Ok(batch_result) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
-//!         let tag_response = batch_result.get_tag::<PitchGet>().response();
+//!         let tag_response = batch_result.get_tag::<PitchGet, _>().response();
 //!     }
 //! }
 //! ```
@@ -156,19 +156,21 @@ impl<Prev: FindTag<Tag, Pos>, Tag, Pos, T> FindTag<Tag, Next<Pos>> for Cons<Prev
 mod tests {
     use super::*;
     use crate::ClockId;
+    use core::mem::size_of;
 
     #[test]
     fn create_single_item_batch() {
         let batch = MailboxBatch::empty().with_tag(ClockrateGet::new(ClockId::Core));
 
-        println!("Batch: {:#?}", batch);
         let slice = unsafe {
             core::slice::from_raw_parts(
                 &batch as *const MailboxBatch<_> as *const u32,
                 (batch.msg_size >> 2) as usize,
             )
         };
-        println!("message binary: {:#X?}", slice);
+
+        assert!(slice[0] == 12 + size_of::<ClockrateGet>() as u32);
+        assert!(slice[2] == PropertyTagId::ClockrateGet as u32);
 
         let _ = batch.get_tag::<ClockrateGet, _>();
     }
@@ -180,35 +182,21 @@ mod tests {
             .with_tag(MaxClockrateGet::new(ClockId::Arm))
             .with_tag(BoardMACAddressGet::new());
 
-        println!("Batch: {:#?}", batch);
         let slice = unsafe {
             core::slice::from_raw_parts(
                 &batch as *const MailboxBatch<_> as *const u32,
                 (batch.msg_size >> 2) as usize,
             )
         };
-        println!("message binary: {:#X?}", slice);
-    }
-
-    #[test]
-    fn retrieve_multiple_item_batch() {
-        let batch = MailboxBatch::empty()
-            .with_tag(ClockrateGet::new(ClockId::Core))
-            //.with_tag(ClockrateGet::new(ClockId::Arm))
-            .with_tag(BoardMACAddressGet::new());
-
-        println!("Batch: {:#?}", batch);
-        let slice = unsafe {
-            core::slice::from_raw_parts(
-                &batch as *const MailboxBatch<_> as *const u32,
-                (batch.msg_size >> 2) as usize,
-            )
-        };
-        println!("message binary: {:#X?}", slice);
 
         assert_eq!(
-            batch.get_tag::<ClockrateGet, _>().response().clock_id(),
-            ClockId::Core
+            slice[0],
+            12 + (size_of::<ClockrateGet>()
+                + size_of::<MaxClockrateGet>()
+                + size_of::<BoardMACAddressGet>()) as u32
         );
+        assert!(slice[2] == PropertyTagId::ClockrateGet as u32);
+        assert!(slice[7] == PropertyTagId::MaxClockrateGet as u32);
+        assert!(slice[12] == PropertyTagId::BoardMACAddressGet as u32);
     }
 }

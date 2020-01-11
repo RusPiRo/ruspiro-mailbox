@@ -10,7 +10,7 @@
 //! This module defines all possible property tags and provides the message definitions for a set of
 //! property tags that are currently supported and could be accessed with the corresponding functions
 //! of the Mailbox accessor or being used as part of a batch request.
-//! 
+//!
 //! # Example
 //! ```no_run
 //! # use ruspiro_mailbox::*;
@@ -20,15 +20,15 @@
 //! // this could be used in a batch message like so
 //! let batch = MailboxBatch::empty().with_tag(tag);
 //! if let Ok(response) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
-//!   println!("Core rate: {}", response.get_tag::<ClockrateGet>().response().clock_rate());
+//!   println!("Core rate: {}", response.get_tag::<ClockrateGet, _>().response().clock_rate());
 //! }
-//! 
+//!
 //! // more convinient for single property tags to be processed is to use the corresponding
 //! // functions of the mailbox accessor
 //! if let Ok(clock_rate) = MAILBOX.take_for(|mb| mb.get_clockrate(ClockId::Core)) {
 //!     println!("Core rate: {}", clock_rate);
 //! }
-//! #}
+//! # }
 //! ```
 
 use crate::{ClockId, DeviceId, VoltageId};
@@ -130,14 +130,13 @@ pub enum PropertyTagId {
     PaletteGet = 0x4_000B,
     /// Set/Update the palette color values
     PaletteSet = 0x4_800B,
-
     /* not yet implemented property tags
     ClocksGet = 0x1_0007,
     TimingGet = 0x2_0002,
-    
+
     TurboGet = 0x3_0009,
     TurboSet = 0x3_8009,
-    
+
     MemoryAllocate = 0x3_000C,
     MemoryLock = 0x3_000D,
     MemoryUnlock = 0x3_000E,

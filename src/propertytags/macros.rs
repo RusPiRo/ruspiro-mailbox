@@ -73,24 +73,24 @@ macro_rules! property_tag_response {
 macro_rules! property_tag_data {
     ($name:ident, $req_fields:tt, $rsp_fields:tt) => {
         paste::item! {
-            #[doc(hidden)]
-            #[repr(C)]
-            #[derive(Copy, Clone)]
-            pub union $name {
-                request: [<$name Request>],
-                response: [<$name Response>],
-            }
+                    #[doc(hidden)]
+                    #[repr(C)]
+                    #[derive(Copy, Clone)]
+                    pub union $name {
+                        request: [<$name Request>],
+                        response: [<$name Response>],
+                    }
 
-            property_tag_request!([<$name Request>], $req_fields);
-            property_tag_response!([<$name Response>], $rsp_fields);
-/*
-            impl core::fmt::Debug for $name {
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                    write!(f, "{:?}", unsafe { self.response })
+                    property_tag_request!([<$name Request>], $req_fields);
+                    property_tag_response!([<$name Response>], $rsp_fields);
+        /*
+                    impl core::fmt::Debug for $name {
+                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                            write!(f, "{:?}", unsafe { self.response })
+                        }
+                    }
+        */
                 }
-            }
-*/
-        }
     };
 }
 
