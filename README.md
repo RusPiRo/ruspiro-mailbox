@@ -1,15 +1,6 @@
 # RusPiRo - Mailbox Property Tag Interface
 
 This crate implements an abstraction of the mailbox property tag interface available in the Raspberry Pi.
-There are currently a limmited number of functions for the following property tag messages implemented:
-- GetArmMemory
-- GetVCMemory
-- GetClockState
-- SetClockState
-- GetClockRate
-- SetClockRate
-- GetPowerState
-- SetPowerState
 
 Check the [official documentation](https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface) of those property tags and their purpose.
 
