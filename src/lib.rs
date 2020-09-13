@@ -4,7 +4,7 @@
  * Author: André Borrmann
  * License: Apache License 2.0
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.4.0")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.3.1")]
 #![cfg_attr(not(any(test, doctest)), no_std)]
 //! # Mailbox property tag interface
 //!

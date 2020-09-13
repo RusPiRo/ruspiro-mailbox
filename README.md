@@ -9,16 +9,17 @@ Check the [official documentation](https://github.com/raspberrypi/firmware/wiki/
 [![Documentation](https://docs.rs/ruspiro-mailbox/badge.svg)](https://docs.rs/ruspiro-mailbox)
 [![License](https://img.shields.io/crates/l/ruspiro-mailbox.svg)](https://github.com/RusPiRo/ruspiro-mailbox#license)
 
-
 ## Usage
 
 To use the crate just add the following dependency to your ``Cargo.toml`` file:
+
 ```toml
 [dependencies]
 ruspiro-mailbox = "0.3"
 ```
 
 Once done the access to the mailbox interface access is available in your rust files like so:
+
 ```rust
 use ruspiro_mailbox::*;
 
@@ -32,4 +33,5 @@ fn demo() {
 ```
 
 ## License
+
 Licensed under Apache License, Version 2.0, ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0)

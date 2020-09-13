@@ -1,15 +1,16 @@
 [package]
 name = "ruspiro-mailbox"
 authors = ["André Borrmann <pspwizard@gmx.de>"]
-version = "0.3.0" # remember to update html_root_url
+version = "0.3.1" # remember to update html_root_url
 description = "Raspberry Pi mailbox property tag interface API."
 license = "Apache-2.0"
-repository = "https://github.com/RusPiRo/ruspiro-mailbox/tree/v0.3.0"
-documentation = "https://docs.rs/ruspiro-mailbox/0.3.0"
+repository = "https://github.com/RusPiRo/ruspiro-mailbox/tree/v0.3.1"
+documentation = "https://docs.rs/ruspiro-mailbox/0.3.1"
 readme = "README.md"
 keywords = ["RusPiRo", "mailbox", "propertytag", "raspberrypi", "baremetal"]
 categories = ["no-std", "embedded"]
 edition = "2018"
+exclude = [".travis.yml", "Makefile.toml"]
 
 [badges]
 travis-ci = { repository = "RusPiRo/ruspiro-mailbox", branch = "master" }
@@ -18,11 +19,17 @@ maintenance = { status = "actively-developed" }
 [lib]
 
 [dependencies]
-paste = "0.1.5"
-ruspiro-register = { path = "../register", version = "0.4" }
-ruspiro-singleton = { path = "../singleton", version = "0.3" }
-ruspiro-cache = { path = "../cache", version = "0.3" }
-ruspiro-console = { path = "../console", version = "0.3" }
+paste = "1.0.0"
+ruspiro-register = "0.4"
+ruspiro-singleton = "0.3"
+ruspiro-cache = "0.3"
+ruspiro-console = "0.3"
 
 [features]
 ruspiro_pi3 = []
+
+[patch.crates-io]
+ruspiro-register = { git = "https://github.com/RusPiRo/ruspiro-register.git" }
+ruspiro-console = { git = "https://github.com/RusPiRo/ruspiro-console.git" }
+ruspiro-cache = { git = "https://github.com/RusPiRo/ruspiro-cache.git" }
+ruspiro-singleton = { git = "https://github.com/RusPiRo/ruspiro-singleton.git" }
