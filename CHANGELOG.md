@@ -1,4 +1,8 @@
 # Changelog
+## :banana: v0.3.1
+  - ### :wrench: Maintenance
+    - use `cargo make` to stabilize build
+
 ## :carrot: v0.3.0
   - ### :bulb: Features
     Support several Raspberry Pi mailbox property tags like:<br>
