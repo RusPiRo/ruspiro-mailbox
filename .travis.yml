@@ -74,7 +74,7 @@ jobs:
 
     - stage: deploy
       name: "Create GitHub release"
-      
+      script: echo "creating github release"
       before_deploy:
         # extract current crate version from argo.toml
         - export CRATE_VERSION=v`sed -En 's/^version.*=.*\"(.*)\".*$/\1/p' < Cargo.toml`
