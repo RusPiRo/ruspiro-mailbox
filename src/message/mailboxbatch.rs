@@ -1,5 +1,5 @@
-/***************************************************************************************************
- * Copyright (c) 2019 by the authors
+/***********************************************************************************************************************
+ * Copyright (c) 2020 by the authors
  *
  * Thanks to the help of https://users.rust-lang.org/u/krishnasannasi/summary at this post:
  * https://users.rust-lang.org/t/request-feedback-on-an-implementation-to-store-messages-in-a-byte-array-batch-and-retrieve-them-back/36557
@@ -8,19 +8,22 @@
  * same has not being created with.
  * The original idea is found in the [trunk](https://crates.io/crates/frunk) crate.
  *
- * Author: André Borrmann
- * License: Apache License 2.0
- **************************************************************************************************/
+ * Author: André Borrmann <pspwizard@gmx.de>
+ * License: Apache License 2.0 / MIT
+ **********************************************************************************************************************/
 
 //! # MailboxBatch message
+//!
 //! This enables the possibility to send a batch of [PropertyTag]s to the mailbox. This is especialy
 //! needed if it comes to setup the framebuffer for example.
 //!
 //! # Usage
+//!
 //! ```no_run
 //! use ruspiro_mailbox::*;
 //!
 //! fn doc() {
+//!     let mut mb = Mailbox::new();
 //!     let batch = MailboxBatch::empty()
 //!         .with_tag(PhysicalSizeSet::new(1024, 768))
 //!         .with_tag(VirtualSizeSet::new(1024, 768))
@@ -29,7 +32,7 @@
 //!         .with_tag(PitchGet::new())
 //!         .with_tag(FramebufferAllocate::new(4));
 //!
-//!     if let Ok(batch_result) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
+//!     if let Ok(batch_result) = mb.send_batch(batch) {
 //!         let tag_response = batch_result.get_tag::<PitchGet, _>().response();
 //!     }
 //! }
