@@ -1,9 +1,9 @@
-/***************************************************************************************************
- * Copyright (c) 2019 by the authors
+/***********************************************************************************************************************
+ * Copyright (c) 2020 by the authors
  *
- * Author: André Borrmann
- * License: Apache License 2.0
- **************************************************************************************************/
+ * Author: André Borrmann <pspwizard@gmx.de>
+ * License: Apache License 2.0 / MIT
+ **********************************************************************************************************************/
 
 //! # Property Tag definitions
 //!
@@ -12,20 +12,22 @@
 //! of the Mailbox accessor or being used as part of a batch request.
 //!
 //! # Example
+//!
 //! ```no_run
 //! # use ruspiro_mailbox::*;
 //! # fn doc() {
+//! let mut mb = Mailbox::new();
 //! // create a property tag to request the clock rate of the core clock.
 //! let tag = ClockrateGet::new(ClockId::Core);
 //! // this could be used in a batch message like so
 //! let batch = MailboxBatch::empty().with_tag(tag);
-//! if let Ok(response) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
+//! if let Ok(response) = mb.send_batch(batch) {
 //!   println!("Core rate: {}", response.get_tag::<ClockrateGet, _>().response().clock_rate());
 //! }
 //!
 //! // more convinient for single property tags to be processed is to use the corresponding
 //! // functions of the mailbox accessor
-//! if let Ok(clock_rate) = MAILBOX.take_for(|mb| mb.get_clockrate(ClockId::Core)) {
+//! if let Ok(clock_rate) = mb.get_clockrate(ClockId::Core) {
 //!     println!("Core rate: {}", clock_rate);
 //! }
 //! # }
@@ -47,7 +49,8 @@ pub enum PropertyTagId {
     FirmwareRevisionGet = 0x0_0001,
     /// Retrieve the board model code
     BoardModelGet = 0x1_0001,
-    /// Retrieve the board revision code. Check https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
+    /// Retrieve the board revision code.
+    /// Check https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
     /// for a decoding of the returned value.
     BoardRevisionGet = 0x1_0002,
     /// Retrieve the serial number
@@ -130,6 +133,8 @@ pub enum PropertyTagId {
     PaletteGet = 0x4_000B,
     /// Set/Update the palette color values
     PaletteSet = 0x4_800B,
+    /// VideoCore Host Interface initialization
+    VchiqInit = 0x4_8010,
     /* not yet implemented property tags
     ClocksGet = 0x1_0007,
     TimingGet = 0x2_0002,
@@ -187,7 +192,7 @@ property_tag!(
 );
 
 property_tag!(
-    /// Retrieve the board revision code. Refer to 
+    /// Retrieve the board revision code. Refer to
     /// https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md for
     /// the encoding of it.
     BoardRevisionGet: {
@@ -501,7 +506,7 @@ property_tag!(
 property_tag!(
     /// Set the physical display/framebuffer size which actually is the the size of the allocated
     /// frame buffer but usually larger than the displayed part that is passed to the monitor. The size
-    /// returned by this tag might not match the requested size but is the closest supported one or 
+    /// returned by this tag might not match the requested size but is the closest supported one or
     /// 0 if no matching supported configuration could be determined.
     PhysicalSizeSet: {
         REQUEST: {
@@ -633,7 +638,7 @@ property_tag!(
 );
 
 property_tag!(
-    /// Retrieve the current offset that is applied when retrieving the virtual display from the 
+    /// Retrieve the current offset that is applied when retrieving the virtual display from the
     /// physical one.
     VirtualOffsetGet: {
         REQUEST: {},
@@ -645,7 +650,7 @@ property_tag!(
 );
 
 property_tag!(
-    /// Set the current offset that is applied when retrieving the virtual display from the 
+    /// Set the current offset that is applied when retrieving the virtual display from the
     /// physical one.
     VirtualOffsetSet: {
         REQUEST: {
@@ -706,6 +711,18 @@ property_tag!(
             offset: u32,
             length: u32,
             palette: [u32; 256]
+        },
+        RESPONSE: {
+            status: u32
+        }
+    }
+);
+
+property_tag!(
+    /// Set the base address of the memory region used for the VCHIQ transmissions between ARM and GPU (VideoCore)
+    VchiqInit: {
+        REQUEST: {
+            base_address: u32
         },
         RESPONSE: {
             status: u32
