@@ -1,8 +1,8 @@
 /***********************************************************************************************************************
- * Copyright (c) 2019 by the authors
+ * Copyright (c) 2020 by the authors
  *
- * Author: André Borrmann
- * License: Apache License 2.0
+ * Author: André Borrmann <pspwizard@gmx.de>
+ * License: Apache License 2.0 / MIT
  **********************************************************************************************************************/
 
 //! # Low-level mailbox property tag interface
@@ -14,14 +14,15 @@ use crate::{
     MailboxBatch, MailboxChannel, MailboxMessage, MailboxResult, MessageState, PropertyTag,
 };
 use ruspiro_cache as cache;
-use ruspiro_register::define_mmio_register;
+use ruspiro_error::{BoxError, GenericError};
+use ruspiro_mmio_register::define_mmio_register;
 
 // MMIO base address for peripherals
 #[cfg(feature = "ruspiro_pi3")]
-const PERIPHERAL_BASE: u32 = 0x3F00_0000;
+const PERIPHERAL_BASE: usize = 0x3F00_0000;
 
 // Mailbox MMIO base address
-const MAILBOX_BASE: u32 = PERIPHERAL_BASE + 0x0000_B880;
+const MAILBOX_BASE: usize = PERIPHERAL_BASE + 0x0000_B880;
 
 /// Function to send a specific message to the mailbox channel given
 /// The mailbox interface does update the memory location of the message send. Therefor the function
@@ -34,10 +35,13 @@ pub(crate) fn send_message<T: PropertyTag>(
     let msg_ptr: *mut MailboxMessage<T> = &mut message;
     let msg_ptr_uncached: u32 = (msg_ptr as u32) | 0xC000_0000;
 
-    cache::cleaninvalidate();
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        cache::flush_dcache_range(msg_ptr as usize, core::mem::size_of::<MailboxMessage<T>>());
+    }
     mb_write(channel, msg_ptr_uncached)?;
     mb_read(channel)?;
-    cache::cleaninvalidate();
+    //cache::cleaninvalidate();
     // at this point the property tag message memory has been changed under the hood
     // that Rust is not aware of, so optimizations might do things that will loose this fact
     // so read this memory location back into the corresponding message type
@@ -50,7 +54,7 @@ pub(crate) fn send_message<T: PropertyTag>(
 
     match result.state() {
         MessageState::ResponseOk => Ok(result),
-        _ => Err("unable to send mailbox property tag message."),
+        _ => Err(GenericError::with_message("unable to send mailbox property tag message.").into()),
     }
 }
 
@@ -60,13 +64,16 @@ pub(crate) fn send_batch<T>(
     mut batch: MailboxBatch<T>,
 ) -> MailboxResult<MailboxBatch<T>> {
     // get the binary data from the batch and pass the address to it to the mailbox for processing
-    let batch_ptr: *mut u32 = &mut batch as *mut MailboxBatch<T> as *mut u32;
+    let batch_ptr = &mut batch as *mut MailboxBatch<T>; // as *mut u32;
     let batch_ptr_uncached: u32 = (batch_ptr as u32) | 0xC000_0000;
     // send this mailbox message and wait for the GPU to respond
-    cache::cleaninvalidate();
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        cache::flush_dcache_range(batch_ptr as usize, core::mem::size_of::<MailboxBatch<T>>());
+    }
     mb_write(channel, batch_ptr_uncached)?;
     mb_read(channel)?;
-    cache::cleaninvalidate();
+    //cache::cleaninvalidate();
 
     // at this point the property tag message batch memory has been changed under the hood
     // that Rust is not aware of, so optimizations might do things that will loose this fact
@@ -80,50 +87,9 @@ pub(crate) fn send_batch<T>(
     if let MessageState::ResponseOk = result.get_state() {
         Ok(result)
     } else {
-        Err("unable to send mailbox property tag message.")
+        Err(GenericError::with_message("unable to send mailbox property tag batch message.").into())
     }
 }
-/*
-pub(crate) fn send_batch2(
-    channel: MailboxChannel,
-    mut batch: MailboxBatch,
-) -> MailboxResult<MailboxBatch> {
-    // before sending push the closing u32 as tag-end marker to the batch
-    batch.buffer.push(0x0);
-    // get the binary data from the batch and pass the address to it to the mailbox for processing
-    let batch_ptr: *mut u32 = batch.buffer.as_mut_ptr();
-    let batch_ptr_uncached: u32 = (batch_ptr as u32) | 0xC000_0000;
-    // send this mailbox message and wait for the GPU to respond
-    cache::cleaninvalidate();
-    mb_write(channel, batch_ptr_uncached)?;
-    mb_read(channel)?;
-    cache::cleaninvalidate();
-
-    // at this point the property tag message batch memory has been changed under the hood
-    // that Rust is not aware of, so optimizations might do things that will loose this fact
-    // so read this memory location back into the corresponding buffer type
-    let result_ptr = (batch_ptr_uncached ^ 0xC000_0000) as *mut u32;
-    let result = unsafe { Vec::from_raw_parts(result_ptr, batch.buffer.len(), batch.buffer.len()) };
-
-    if result[1] == MessageState::ResponseOk as u32 {
-        // as we have rconstructed the buffer vector at the exact location of the previous one
-        // we nee to ensure the previous one does not get dropped as this might release
-        // resources now used be the reconstructed version
-        core::mem::forget(batch.buffer);
-
-        // re-construct a MailboxBatch from the data to return it from this function
-        let batch = MailboxBatch {
-            buffer: result,
-            // we can re-use the previous tag offsets as their position cannot change during GPU processing
-            tag_offsets: batch.tag_offsets,
-        };
-
-        Ok(batch)
-    } else {
-        Err("unable to send mailbox property tag message.")
-    }
-}
-*/
 
 define_mmio_register! [
     MAILBOX0_READ<ReadOnly<u32>@(MAILBOX_BASE)>,

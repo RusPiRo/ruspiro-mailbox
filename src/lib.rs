@@ -1,15 +1,17 @@
 /***********************************************************************************************************************
- * Copyright (c) 2019 by the authors
- *
- * Author: André Borrmann
- * License: Apache License 2.0
+ * Copyright (c) 2020 by the authors
+ * 
+ * Author: André Borrmann <pspwizard@gmx.de>
+ * License: Apache License 2.0 / MIT
  **********************************************************************************************************************/
-#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/0.3.1")]
+#![doc(html_root_url = "https://docs.rs/ruspiro-mailbox/||VERSION||")]
 #![cfg_attr(not(any(test, doctest)), no_std)]
-//! # Mailbox property tag interface
+
+//! # Mailbox property tag interface API
 //!
 //! This crate provides an abstraction to the mailbox property tag interface available on the Raspberry Pi.
 //! There are currently the following property tag messages implemented:
+//!
 //! - FirmwareRevisionGet
 //! - BoardModelGet
 //! - BoardRevisionGet
@@ -60,12 +62,14 @@
 //!
 //! The crate provides a singleton wrapper to call the different Raspberry Pi mailbox property tag messages. The
 //! following example demonstrates the usage with the GetClockRate message.
+//!
 //! ```no_run
 //! use ruspiro_mailbox::*;
 //!
 //! fn main() {
+//!     let mut mb = Mailbox::new();
 //!     // use the mailbox to retrieve the core clock rate
-//!     if let Ok(core_rate) = MAILBOX.take_for(|mb| mb.get_clockrate(ClockId::Core)) {
+//!     if let Ok(core_rate) = mb.get_clockrate(ClockId::Core) {
 //!         // here we know the core clock rate, so do something with it...
 //!         println!("Core clock rate {}", core_rate);
 //!     }
@@ -81,10 +85,12 @@
 //! verified which one has failed.
 //!
 //! # Example
+//!
 //! ```no_run
 //! # use ruspiro_mailbox::*;
 //!
 //! fn main() {
+//!     let mut mb = Mailbox::new();
 //!     // first create a new empty batch
 //!     let mut batch = MailboxBatch::empty()
 //!     // add as many tags as required to the batch
@@ -92,7 +98,7 @@
 //!         .with_tag(MaxClockrateGet::new(ClockId::Arm));
 //!
 //!     // execute the batch using the mailbox peripheral
-//!     if let Ok(batch) = MAILBOX.take_for(|mb| mb.send_batch(batch)) {
+//!     if let Ok(batch) = mb.send_batch(batch) {
 //!         // as the batch processing has been successfull we can check individual
 //!         // tag responses
 //!         println!("Core clock rate: {}",
@@ -103,11 +109,18 @@
 //! }
 //! ```
 //!
+//! # Hint
+//!
+//! The `Mailbox` represents a kind of a peripheral device of the Raspberry Pi. Therefore it should only be instantiated
+//! once. As the `Mailbox` is not capable to handle multiple parallel requests the `Mailbox` methods always require a 
+//! mutable reference of it when called. This ensures exclusive access to the mailbox interface for message calls.
+//!
 //! # Features
-//! - ``ruspiro_pi3`` When active it ensures the proper MMIO base address is compiled for Raspberry Pi 3
+//!
+//! - `ruspiro_pi3` When active it ensures the proper MMIO base address is compiled for Raspberry Pi 3
 //!
 
-use ruspiro_singleton::Singleton;
+use ruspiro_error::BoxError;
 
 mod interface;
 use interface::*;
@@ -115,9 +128,6 @@ mod propertytags;
 pub use propertytags::*;
 mod message;
 pub use message::*;
-
-/// static "singleton" accessor to the MAILBOX peripheral
-pub static MAILBOX: Singleton<Mailbox> = Singleton::new(Mailbox::new());
 
 /// Definition of the different clock id's used in the mailbox interface
 #[repr(u32)]
@@ -192,31 +202,45 @@ pub enum MessageState {
 }
 
 /// Type alias for Results of the functions in this module
-pub type MailboxResult<T> = Result<T, &'static str>;
+pub type MailboxResult<T> = Result<T, BoxError>;
 
 /// MAILBOX peripheral representation
 pub struct Mailbox;
 
 impl Mailbox {
-    pub(crate) const fn new() -> Self {
+    pub const fn new() -> Self {
         Mailbox
     }
 
     /// Send a mailbox batch message
+    ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
     /// # fn doc() {
-    /// let batch = MailboxBatch::empty().with_tag(ClockrateGet::new(ClockId::Core));
-    /// let _ = MAILBOX.take_for(|mb| mb.send_batch(batch));
+    /// let mut mb = Mailbox::new();
+    /// let batch = MailboxBatch::empty()
+    ///                 .with_tag(ClockrateGet::new(ClockId::Core));
+    /// let _ = mb.send_batch(batch);
     /// # }
     /// ```
-    pub fn send_batch<T>(&self, batch: MailboxBatch<T>) -> MailboxResult<MailboxBatch<T>> {
+    pub fn send_batch<T>(&mut self, batch: MailboxBatch<T>) -> MailboxResult<MailboxBatch<T>> {
         send_batch(MailboxChannel::PropertyTagsVc, batch)
     }
 
     /// Get the firmware revision of this Raspberry Pi
-    pub fn get_firmware_revision(&self) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let revision = mb.get_firmware_revision().unwrap();
+    /// # }
+    /// ```
+    pub fn get_firmware_revision(&mut self) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             FirmwareRevisionGet::new().into(),
@@ -225,14 +249,35 @@ impl Mailbox {
     }
 
     /// Get the board model of this Raspberry Pi
-    pub fn get_board_model(&self) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let model = mb.get_board_model().unwrap();
+    /// # }
+    /// ```
+    pub fn get_board_model(&mut self) -> MailboxResult<u32> {
         send_message(MailboxChannel::PropertyTagsVc, BoardModelGet::new().into())
             .map(|message| message.response().board_model())
     }
 
-    /// Get the board revision of this Raspberry Pi. Check out https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
+    /// Get the board revision of this Raspberry Pi.
+    /// Check out https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
     /// for the encoding of the returned value
-    pub fn get_board_revision(&self) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let revision = mb.get_board_revision().unwrap();
+    /// # }
+    /// ```
+    pub fn get_board_revision(&mut self) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             BoardRevisionGet::new().into(),
@@ -241,7 +286,17 @@ impl Mailbox {
     }
 
     /// Get the MAC address of this Raspberry Pi
-    pub fn get_board_mac_address(&self) -> MailboxResult<[u8; 6]> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let mac_addr = mb.get_board_mac_address().unwrap();
+    /// # }
+    /// ```
+    pub fn get_board_mac_address(&mut self) -> MailboxResult<[u8; 6]> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             BoardMACAddressGet::new().into(),
@@ -251,15 +306,17 @@ impl Mailbox {
 
     /// Get the ARM memory base address and size as configured in the boot config file.
     /// Returns a tuple Ok((address:u32, size:u32)) on success or an Err(msg: &str) on failure
+    ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let arm_memory = MAILBOX.take_for(|mb| mb.get_arm_memory()).unwrap();
-    /// println!("ARM memory address: {}, size: {}", arm_memory.0, arm_memory.1);
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let (address, size) = mb.get_arm_memory().unwrap();
     /// # }
     /// ```
-    pub fn get_arm_memory(&self) -> MailboxResult<(u32, u32)> {
+    pub fn get_arm_memory(&mut self) -> MailboxResult<(u32, u32)> {
         send_message(MailboxChannel::PropertyTagsVc, ArmMemoryGet::new().into()).map(|message| {
             let response = message.response();
             (response.base_address(), response.size())
@@ -268,15 +325,17 @@ impl Mailbox {
 
     /// Get the VideoCore memory base address and size as configured in the boot config file.
     /// Returns a tuple Ok((address:u32, size:u32)) on success or an Err(msg: &str) on failure
+    ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let vc_memory = MAILBOX.take_for(|mb| mb.get_vc_memory()).unwrap();
-    /// println!("VC memory address: {}, size: {}", vc_memory.0, vc_memory.1);
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let (address, size) = mb.get_vc_memory().unwrap();
     /// # }
     /// ```
-    pub fn get_vc_memory(&self) -> MailboxResult<(u32, u32)> {
+    pub fn get_vc_memory(&mut self) -> MailboxResult<(u32, u32)> {
         send_message(MailboxChannel::PropertyTagsVc, VcMemoryGet::new().into()).map(|message| {
             let response = message.response();
             (response.base_address(), response.size())
@@ -286,7 +345,17 @@ impl Mailbox {
     /// Get the active DMA channels.<br>
     /// Bits 0-15  of the response represents the DMA channels 0-15. If the corresponding bit is set for a
     /// channel it is usable. Bits 16-31 are reserved
-    pub fn get_dma_channels(&self) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let dma_channel = mb.get_dma_channels().unwrap();
+    /// # }
+    /// ```
+    pub fn get_dma_channels(&mut self) -> MailboxResult<u32> {
         send_message(MailboxChannel::PropertyTagsVc, DmaChannelsGet::new().into())
             .map(|message| message.response().channel_mask())
     }
@@ -295,13 +364,17 @@ impl Mailbox {
     /// The returned state could have the following values:
     /// Bit 0: 0 = off, 1 = on
     /// Bit 1: 0 = device exists, 1 = device unknown
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let power_state = MAILBOX.take_for(|mb| mb.get_powerstate(DeviceId::SdCard)).unwrap();
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let state = mb.get_powerstate(DeviceId::Uart0).unwrap();
     /// # }
     /// ```
-    pub fn get_powerstate(&self, device_id: DeviceId) -> MailboxResult<u32> {
+    pub fn get_powerstate(&mut self, device_id: DeviceId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             PowerStateGet::new(device_id).into(),
@@ -316,14 +389,17 @@ impl Mailbox {
     /// The returned state contains the following values:
     /// Bit 0: 0 = off, 1 = on
     /// Bit 1: 0 = device exists, 1 = device unknown
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let new_power_state = MAILBOX.take_for(|mb| mb.set_powerstate(DeviceId::SdCard, 0b11))
-    ///     .unwrap();
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let new_state = mb.set_powerstate(DeviceId::Uart0, 0b11).unwrap();
     /// # }
     /// ```
-    pub fn set_powerstate(&self, device_id: DeviceId, state: u32) -> MailboxResult<u32> {
+    pub fn set_powerstate(&mut self, device_id: DeviceId, state: u32) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             PowerStateSet::new(device_id, state).into(),
@@ -335,13 +411,17 @@ impl Mailbox {
     /// The returned state could have the following values:
     /// Bit 0: 0 = off, 1 = on
     /// Bit 1: 0 = clock exists, 1 = clock unknown
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let clock_state = MAILBOX.take_for(|mb| mb.get_clockstate(ClockId::Pwm)).unwrap();
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let state = mb.get_clockstate(ClockId::Core).unwrap();
     /// # }
     /// ```
-    pub fn get_clockstate(&self, clock_id: ClockId) -> MailboxResult<u32> {
+    pub fn get_clockstate(&mut self, clock_id: ClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             ClockStateGet::new(clock_id).into(),
@@ -355,14 +435,17 @@ impl Mailbox {
     /// The returned state contains the following values:
     /// Bit 0: 0 = off, 1 = on
     /// Bit 1: 0 = clock exists, 1 = clock unknown
+    ///
+    /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let new_clock_state = MAILBOX.take_for(|mb| mb.set_clockstate(ClockId::Pwm, 0b1))
-    ///     .unwrap();
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let new_state = mb.set_clockstate(ClockId::Core, 0b1).unwrap();
     /// # }
     /// ```
-    pub fn set_clockstate(&self, clock_id: ClockId, state: u32) -> MailboxResult<u32> {
+    pub fn set_clockstate(&mut self, clock_id: ClockId, state: u32) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             ClockStateSet::new(clock_id, state).into(),
@@ -372,14 +455,17 @@ impl Mailbox {
 
     /// Get the clock rate via mailbox interface for the clockId given.
     /// Returns Ok(rate:u32) on success or Err(msg: &str) on failure
+    ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let clock_rate = MAILBOX.take_for(|mb| mb.get_clockrate(ClockId::Core)).unwrap();
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let clock_rate = mb.get_clockrate(ClockId::Core).unwrap();
     /// # }
     /// ```
-    pub fn get_clockrate(&self, clock_id: ClockId) -> MailboxResult<u32> {
+    pub fn get_clockrate(&mut self, clock_id: ClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             ClockrateGet::new(clock_id).into(),
@@ -387,17 +473,19 @@ impl Mailbox {
         .map(|message| message.response().clock_rate())
     }
 
-    /// Set the clock rate via the mailbox interface for the clockId given. The rate will be set to the closest valid value.
-    /// Returns Ok(rate:u32) with the new clock rate set on success ore Err(msg: &str) on failure
+    /// Set the clock rate via the mailbox interface for the clockId given. The rate will be set to the closest valid
+    /// value. Returns Ok(rate:u32) with the new clock rate set on success ore Err(msg: &str) on failure
+    ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ruspiro_mailbox::*;
-    /// # fn demo() {
-    /// let new_clock_rate = MAILBOX.take_for(|mb| mb.set_clockrate(ClockId::Core, 250_000_000))
-    ///     .unwrap();
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let new_clock_rate = mb.set_clockrate(ClockId::Core, 250_000_000).unwrap();
     /// # }
     /// ```
-    pub fn set_clockrate(&self, clock_id: ClockId, rate: u32) -> MailboxResult<u32> {
+    pub fn set_clockrate(&mut self, clock_id: ClockId, rate: u32) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             ClockrateSet::new(clock_id, rate, 0x0).into(),
@@ -406,7 +494,17 @@ impl Mailbox {
     }
 
     /// Get the maximum available clock rate for the given clock id
-    pub fn get_max_clock_rate(&self, clock_id: ClockId) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let max_rate = mb.get_max_clockrate(ClockId::Core).unwrap();
+    /// # }
+    /// ```
+    pub fn get_max_clockrate(&mut self, clock_id: ClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             MaxClockrateGet::new(clock_id).into(),
@@ -415,7 +513,17 @@ impl Mailbox {
     }
 
     /// Get the minimum available clock rate for the given clock id
-    pub fn get_min_clock_rate(&self, clock_id: ClockId) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let min_rate = mb.get_min_clockrate(ClockId::Core).unwrap();
+    /// # }
+    /// ```
+    pub fn get_min_clockrate(&mut self, clock_id: ClockId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             MinClockrateGet::new(clock_id).into(),
@@ -425,7 +533,17 @@ impl Mailbox {
 
     /// Get the current voltage of the given [VoltageId]. The value represents an offset from
     /// 1.2V in units of 0.025V.
-    pub fn get_voltage(&self, voltage_id: VoltageId) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let voltage = mb.get_voltage(VoltageId::Core).unwrap();
+    /// # }
+    /// ```
+    pub fn get_voltage(&mut self, voltage_id: VoltageId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             VoltageGet::new(voltage_id).into(),
@@ -435,7 +553,17 @@ impl Mailbox {
 
     /// Set the current voltage for the given [VoltageId]. The value represents an offset from
     /// 1.2V in units of 0.025V.
-    pub fn set_voltage(&self, voltage_id: VoltageId, value: u32) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let new_voltage = mb.set_voltage(VoltageId::Core, 10).unwrap();
+    /// # }
+    /// ```
+    pub fn set_voltage(&mut self, voltage_id: VoltageId, value: u32) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             VoltageSet::new(voltage_id, value).into(),
@@ -445,7 +573,17 @@ impl Mailbox {
 
     /// Get the maximum voltage of the given [VoltageId]. The value represents an offset from
     /// 1.2V in units of 0.025V.
-    pub fn get_max_voltage(&self, voltage_id: VoltageId) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let max_voltage = mb.get_max_voltage(VoltageId::Core).unwrap();
+    /// # }
+    /// ```
+    pub fn get_max_voltage(&mut self, voltage_id: VoltageId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             MaxVoltageGet::new(voltage_id).into(),
@@ -455,7 +593,17 @@ impl Mailbox {
 
     /// Get the minimum voltage of the given [VoltageId]. The value represents an offset from
     /// 1.2V in units of 0.025V.
-    pub fn get_min_voltage(&self, voltage_id: VoltageId) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let min_voltage = mb.get_min_voltage(VoltageId::Core).unwrap();
+    /// # }
+    /// ```
+    pub fn get_min_voltage(&mut self, voltage_id: VoltageId) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             MinVoltageGet::new(voltage_id).into(),
@@ -464,7 +612,17 @@ impl Mailbox {
     }
 
     /// Get the current temperature in thousandths of a degree Celsius.
-    pub fn get_temperature(&self) -> MailboxResult<u32> {
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let temperature = mb.get_temperature().unwrap();
+    /// # }
+    /// ```
+    pub fn get_temperature(&mut self) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             TemperatureGet::new(0x0).into(),
@@ -474,11 +632,40 @@ impl Mailbox {
 
     /// Get the maximum safe temperature in thousandths of a degree Celsius. Above this temperature
     /// overclocking/turbo might get deactivated
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let max_temp = mb.get_max_temperature().unwrap();
+    /// # }
+    /// ```
     pub fn get_max_temperature(&self) -> MailboxResult<u32> {
         send_message(
             MailboxChannel::PropertyTagsVc,
             MaxTemperatureGet::new(0x0).into(),
         )
         .map(|message| message.response().value())
+    }
+
+    /// Send the VCHIQ slots base address to the VideoCore
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use ruspiro_mailbox::*;
+    /// # fn doc() {
+    /// let mut mb = Mailbox::new();
+    /// let _ = mb.set_vchiq_slot_base(0xBEEF_0000).unwrap();
+    /// # }
+    /// ```
+    pub fn set_vchiq_slot_base(&mut self, slot_base: u32) -> MailboxResult<u32> {
+        send_message(
+            MailboxChannel::PropertyTagsVc,
+            VchiqInit::new(slot_base).into(),
+        )
+        .map(|message| message.response().status())
     }
 }
