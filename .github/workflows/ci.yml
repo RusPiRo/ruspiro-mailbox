@@ -5,6 +5,7 @@ on:
     branches:
       - development
       - release
+
   push:
     branches:
       - development
@@ -14,32 +15,27 @@ jobs:
   build:
     name: Compile The Crate
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout the current code from github into the CI machine
-      - name: Checkout Code
+      - name: Chechout Code
         uses: actions/checkout@v2
 
       - name: Install aarch64 gcc toolchain
         run: sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      # install toolchain based on rust-toolchain file
-      - name: Install Rust Nightly and Cargo
+      - name: Install Rust nightly and cargo
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2021-09-05
           profile: minimal
-          components: rust-src, llvm-tools-preview
-          target: aarch64-unknown-none
           override: true
+          components: rust-src, llvm-tools-preview
+          target: aarch64-unknown-linux-gnu
 
-      - name: Install Cargo Make
-        uses: davidB/rust-cargo-make@v1
-        with:
-          version: 'latest'
+      - name: Install cargo tool
+        run: cargo install cargo-make
 
       - if: ${{ github.event_name != 'pull_request' }}
-        name: Remove patches if not a PR build
+        name: Remove patches from Cargo.toml
         run: |
           sed -i "/{^\[patch\.crates-io\] /{:a;N;/\Z}/!ba};/^ruspiro-.*\(git\|path\).*/d" Cargo.toml;
           cat Cargo.toml
@@ -62,16 +58,14 @@ jobs:
       - name: Install Rust Nightly and Cargo
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2021-09-05
           profile: minimal
-          components: rust-src, llvm-tools-preview
-          target: aarch64-unknown-none
+          toolchain: nightly-2021-09-05
           override: true
+          components: rust-src, llvm-tools-preview
+          target: aarch64-unknown-linux-gnu
 
-      - name: Install Cargo Make
-        uses: davidB/rust-cargo-make@v1
-        with:
-          version: 'latest'
+      - name: Install cargo tool
+        run: cargo install cargo-make
         
       - name: Publish-Dry-Run
         run: cargo make publish_dry --profile pipeline
@@ -152,16 +146,14 @@ jobs:
       - name: Install Rust Nightly and Cargo
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2021-09-05
           profile: minimal
-          components: rust-src, llvm-tools-preview
-          target: aarch64-unknown-none
+          toolchain: nightly-2021-09-05
           override: true
+          components: rust-src, llvm-tools-preview
+          target: aarch64-unknown-linux-gnu
 
-      - name: Install Cargo Make
-        uses: davidB/rust-cargo-make@v1
-        with:
-          version: 'latest'
+      - name: Install cargo tool
+        run: cargo install cargo-make
 
       - name: Get current version
         run: echo 'CRATE_VERSION='$(sed -En 's/^version.*=.*\"(.*)\".*$/\1/p' < Cargo.toml) >> $GITHUB_ENV
@@ -175,5 +167,5 @@ jobs:
           # and the README.md
           sed -i -e 's/||VERSION||/'$CRATE_VERSION'/g' README.md
         
-      - name: Publish-Dry-Run
+      - name: Publish
         run: cargo make publish --env CRATES_TOKEN=${{ secrets.CRATES_TOKEN }} --profile pipeline
