@@ -4,7 +4,7 @@ This crate implements an abstraction of the mailbox property tag interface avail
 
 Check the [official documentation](https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface) of those property tags and their purpose.
 
-[![Travis-CI Status](https://api.travis-ci.com/RusPiRo/ruspiro-mailbox.svg?branch=master)](https://travis-ci.com/RusPiRo/ruspiro-mailbox)
+![CI](https://github.com/RusPiRo/ruspiro-mailbox/workflows/CI/badge.svg?branch=development)
 [![Latest Version](https://img.shields.io/crates/v/ruspiro-mailbox.svg)](https://crates.io/crates/ruspiro-mailbox)
 [![Documentation](https://docs.rs/ruspiro-mailbox/badge.svg)](https://docs.rs/ruspiro-mailbox)
 [![License](https://img.shields.io/crates/l/ruspiro-mailbox.svg)](https://github.com/RusPiRo/ruspiro-mailbox#license)
